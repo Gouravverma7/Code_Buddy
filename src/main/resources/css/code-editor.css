@@ -1,0 +1,49 @@
+/* Code Editor Syntax Highlighting Styles */
+
+.code-area {
+    -fx-font-family: 'Courier New', monospace;
+    -fx-font-size: 14px;
+}
+
+.code-area .keyword {
+    -fx-fill: #0000ff;
+    -fx-font-weight: bold;
+}
+
+.code-area .string {
+    -fx-fill: #008000;
+}
+
+.code-area .comment {
+    -fx-fill: #808080;
+    -fx-font-style: italic;
+}
+
+.code-area .paren {
+    -fx-fill: #000080;
+    -fx-font-weight: bold;
+}
+
+.code-area .brace {
+    -fx-fill: #800080;
+    -fx-font-weight: bold;
+}
+
+.code-area .bracket {
+    -fx-fill: #ff8000;
+    -fx-font-weight: bold;
+}
+
+.code-area .semicolon {
+    -fx-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+/* Line numbers */
+.lineno {
+    -fx-background-color: #f0f0f0;
+    -fx-text-fill: #666666;
+    -fx-font-family: 'Courier New', monospace;
+    -fx-font-size: 12px;
+    -fx-padding: 0 5 0 5;
+}
