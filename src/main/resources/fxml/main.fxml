@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codebuddy.desktop.controller.MainController">
+   <top>
+      <VBox>
+         <MenuBar fx:id="menuBar">
+            <Menu text="File">
+               <MenuItem onAction="#newSession" text="New Session" />
+               <MenuItem onAction="#openSession" text="Open Session" />
+               <SeparatorMenuItem />
+               <MenuItem onAction="#saveSession" text="Save Session" />
+               <SeparatorMenuItem />
+               <MenuItem onAction="#exportToGitHub" text="Export to GitHub" />
+            </Menu>
+            <Menu text="Edit">
+               <MenuItem text="Undo" />
+               <MenuItem text="Redo" />
+               <SeparatorMenuItem />
+               <MenuItem text="Cut" />
+               <MenuItem text="Copy" />
+               <MenuItem text="Paste" />
+            </Menu>
+            <Menu text="AI">
+               <MenuItem onAction="#explainCode" text="Explain Code" />
+               <MenuItem onAction="#fixBugs" text="Fix Bugs" />
+               <MenuItem onAction="#addComments" text="Add Comments" />
+            </Menu>
+            <Menu text="Help">
+               <MenuItem text="About" />
+            </Menu>
+         </MenuBar>
+         <ToolBar fx:id="toolBar">
+            <Label text="Session ID:" />
+            <TextField fx:id="sessionIdField" prefWidth="200.0" promptText="Enter session ID" />
+            <Button fx:id="connectButton" text="Connect" />
+            <Button fx:id="disconnectButton" text="Disconnect" />
+            <Separator />
+            <Label fx:id="statusLabel" text="Disconnected" />
+         </ToolBar>
+      </VBox>
+   </top>
+   <center>
+      <SplitPane dividerPositions="0.75">
+         <TabPane fx:id="fileTabPane" />
+         <VBox fx:id="sidePanel" minWidth="300.0" prefWidth="300.0" />
+      </SplitPane>
+   </center>
+</BorderPane>

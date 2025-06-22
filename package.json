@@ -1,0 +1,26 @@
+{
+  "name": "codebuddy-ai-web",
+  "version": "1.0.0",
+  "description": "CodeBuddy.ai Web Interface - Collaborative AI-Powered Code Editor",
+  "main": "server.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.1",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "@vitejs/plugin-legacy": "^5.0.0"
+  },
+  "keywords": ["collaborative", "code-editor", "ai", "real-time", "java"],
+  "author": "CodeBuddy.ai Team",
+  "license": "MIT"
+}

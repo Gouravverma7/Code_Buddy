@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeBuddy.ai - Collaborative Code Editor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css" rel="stylesheet">
+    <link href="/css/app.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">CodeBuddy.ai</h1>
+                <div class="session-controls">
+                    <input type="text" id="sessionId" placeholder="Session ID" class="session-input">
+                    <button id="connectBtn" class="btn btn-primary">Connect</button>
+                    <button id="disconnectBtn" class="btn btn-secondary" disabled>Disconnect</button>
+                </div>
+                <div class="user-controls">
+                    <button id="githubExport" class="btn btn-outline">Export to GitHub</button>
+                    <div class="user-avatar">U</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="file-explorer">
+                    <h3>Files</h3>
+                    <div class="file-tree">
+                        <div class="file-item active" data-file="Main.java">
+                            <span class="file-icon">📄</span>
+                            Main.java
+                        </div>
+                    </div>
+                    <button id="addFileBtn" class="btn btn-small">+ Add File</button>
+                </div>
+
+                <div class="collaborators">
+                    <h3>Collaborators</h3>
+                    <div class="collaborator-list">
+                        <div class="collaborator">
+                            <div class="collaborator-avatar">A</div>
+                            <span>Alice</span>
+                            <span class="status online"></span>
+                        </div>
+                        <div class="collaborator">
+                            <div class="collaborator-avatar">B</div>
+                            <span>Bob</span>
+                            <span class="status online"></span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Editor Area -->
+            <div class="editor-container">
+                <div class="editor-header">
+                    <div class="file-tabs">
+                        <div class="file-tab active">Main.java</div>
+                    </div>
+                    <div class="ai-controls">
+                        <button id="explainBtn" class="btn btn-ai">🤖 Explain</button>
+                        <button id="fixBtn" class="btn btn-ai">🔧 Fix</button>
+                        <button id="commentBtn" class="btn btn-ai">💬 Comment</button>
+                        <button id="optimizeBtn" class="btn btn-ai">⚡ Optimize</button>
+                    </div>
+                </div>
+                <div id="editor" class="code-editor"></div>
+                
+                <!-- AI Response Panel -->
+                <div id="aiPanel" class="ai-panel hidden">
+                    <div class="ai-panel-header">
+                        <h3>AI Assistant</h3>
+                        <button id="closeAiPanel" class="close-btn">×</button>
+                    </div>
+                    <div class="ai-response">
+                        <div id="aiResponse" class="ai-text"></div>
+                        <div id="aiCode" class="ai-code hidden">
+                            <h4>Suggested Code:</h4>
+                            <pre><code id="aiCodeContent"></code></pre>
+                            <button id="applyCodeBtn" class="btn btn-primary">Apply Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <h3>Team Chat</h3>
+                    <button id="toggleChat" class="toggle-btn">−</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message">
+                        <div class="message-header">
+                            <span class="username">Alice</span>
+                            <span class="timestamp">10:30</span>
+                        </div>
+                        <div class="message-content">Hey everyone! Ready to start coding?</div>
+                    </div>
+                    <div class="message">
+                        <div class="message-header">
+                            <span class="username">Bob</span>
+                            <span class="timestamp">10:32</span>
+                        </div>
+                        <div class="message-content">Yes! I've got some ideas for the algorithm</div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Type a message..." class="message-input">
+                    <button id="sendBtn" class="btn btn-primary">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
