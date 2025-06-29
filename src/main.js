@@ -1,4 +1,4 @@
-// Enhanced CodeBuddy.ai Web Application with Advanced Features
+// Enhanced CodeBuddy.ai Web Application with All Advanced Features
 class CodeBuddyApp {
     constructor() {
         this.editor = null;
@@ -19,6 +19,7 @@ class CodeBuddyApp {
         this.localStream = null;
         this.remoteStreams = new Map();
         this.isInCall = false;
+        this.consoleVisible = false;
         
         this.init();
     }
@@ -99,6 +100,12 @@ class CodeBuddyApp {
             }
         });
 
+        // Console controls
+        document.getElementById('consoleBtn').addEventListener('click', () => this.toggleConsole());
+        document.getElementById('closeConsole').addEventListener('click', () => this.hideConsole());
+        document.getElementById('clearConsole').addEventListener('click', () => this.clearConsole());
+        document.getElementById('runCodeBtn').addEventListener('click', () => this.runCode());
+
         // File Explorer
         document.getElementById('newFileBtn').addEventListener('click', () => this.createNewFile());
         document.getElementById('newFolderBtn').addEventListener('click', () => this.createNewFolder());
@@ -116,10 +123,6 @@ class CodeBuddyApp {
         // Video/Audio call controls
         document.getElementById('videoCallBtn').addEventListener('click', () => this.startVideoCall());
         document.getElementById('audioCallBtn').addEventListener('click', () => this.startAudioCall());
-        document.getElementById('endCall').addEventListener('click', () => this.endCall());
-        document.getElementById('toggleMic').addEventListener('click', () => this.toggleMicrophone());
-        document.getElementById('toggleCamera').addEventListener('click', () => this.toggleCamera());
-        document.getElementById('shareScreen').addEventListener('click', () => this.shareScreen());
 
         // Collaborator management
         document.getElementById('addCollaboratorBtn').addEventListener('click', () => this.openAddCollaboratorModal());
@@ -188,53 +191,29 @@ class CodeBuddyApp {
     loadSampleCode() {
         const sampleCode = `package com.codebuddy.example;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-/**
- * Enhanced CodeBuddy.ai Demo - Advanced Java Features
- * Demonstrates modern Java programming patterns and best practices
- */
-public class AdvancedJavaDemo {
-    
-    private final Map<String, List<Task>> tasksByCategory;
-    private final TaskProcessor processor;
-    
-    public AdvancedJavaDemo() {
-        this.tasksByCategory = new ConcurrentHashMap<>();
-        this.processor = new TaskProcessor();
-    }
-    
-    /**
-     * Processes tasks using modern Java 8+ features
-     */
-    public void processTasks(List<Task> tasks) {
-        // Group tasks by category and priority
-        Map<String, Map<Priority, List<Task>>> groupedTasks = tasks.stream()
-            .filter(task -> task.isActive())
-            .collect(Collectors.groupingBy(
-                Task::getCategory,
-                Collectors.groupingBy(Task::getPriority)
-            ));
-        
-        // Process high priority tasks first
-        groupedTasks.forEach((category, priorityMap) -> {
-            priorityMap.entrySet().stream()
-                .sorted(Map.Entry.<Priority, List<Task>>comparingByKey().reversed())
-                .forEach(entry -> {
-                    System.out.printf("Processing %d %s tasks in category: %s%n", 
-                        entry.getValue().size(), entry.getKey(), category);
-                    
-                    entry.getValue().parallelStream()
-                        .forEach(processor::execute);
-                });
-        });
-    }
-    
+public class HelloWorld {
     public static void main(String[] args) {
         System.out.println("Welcome to CodeBuddy.ai Enhanced!");
-        AdvancedJavaDemo demo = new AdvancedJavaDemo();
-        // Implementation continues...
+        
+        // Example: Simple calculator
+        int a = 10;
+        int b = 5;
+        
+        System.out.println("Addition: " + (a + b));
+        System.out.println("Subtraction: " + (a - b));
+        System.out.println("Multiplication: " + (a * b));
+        System.out.println("Division: " + (a / b));
+        
+        // Example: Array processing
+        int[] numbers = {1, 2, 3, 4, 5};
+        int sum = 0;
+        
+        for (int num : numbers) {
+            sum += num;
+        }
+        
+        System.out.println("Sum of array: " + sum);
+        System.out.println("Average: " + (sum / numbers.length));
     }
 }`;
         
@@ -247,6 +226,97 @@ public class AdvancedJavaDemo {
         if (this.editor) {
             this.editor.setValue(sampleCode);
         }
+    }
+
+    // Console Methods
+    toggleConsole() {
+        this.consoleVisible = !this.consoleVisible;
+        const consolePanel = document.getElementById('consolePanel');
+        
+        if (this.consoleVisible) {
+            consolePanel.classList.add('active');
+            this.addConsoleOutput('Console opened. Ready to execute code.', 'info');
+        } else {
+            consolePanel.classList.remove('active');
+        }
+    }
+
+    hideConsole() {
+        this.consoleVisible = false;
+        document.getElementById('consolePanel').classList.remove('active');
+    }
+
+    clearConsole() {
+        document.getElementById('consoleOutput').innerHTML = '';
+        this.addConsoleOutput('Console cleared.', 'info');
+    }
+
+    addConsoleOutput(text, type = 'info') {
+        const consoleOutput = document.getElementById('consoleOutput');
+        const outputLine = document.createElement('div');
+        outputLine.className = `output-line ${type}`;
+        outputLine.textContent = text;
+        consoleOutput.appendChild(outputLine);
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    async runCode() {
+        if (!this.currentFile) {
+            this.showNotification('No file selected to run', 'warning');
+            return;
+        }
+
+        const code = this.editor.getValue();
+        if (!code.trim()) {
+            this.showNotification('No code to execute', 'warning');
+            return;
+        }
+
+        // Show console if hidden
+        if (!this.consoleVisible) {
+            this.toggleConsole();
+        }
+
+        // Get language and filename
+        const file = this.fileSystem.get(this.currentFile);
+        const language = file ? file.language : 'java';
+        const filename = this.currentFile.split('/').pop().split('.')[0];
+
+        this.addConsoleOutput(`Executing ${language} code...`, 'info');
+        this.addConsoleOutput('─'.repeat(50), 'info');
+
+        try {
+            const response = await fetch('/api/code/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: code,
+                    language: language,
+                    filename: filename
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (result.output) {
+                    this.addConsoleOutput(result.output, 'success');
+                }
+                if (result.error) {
+                    this.addConsoleOutput(result.error, 'warning');
+                }
+                this.addConsoleOutput(`Execution completed in ${result.executionTime}ms`, 'info');
+            } else {
+                this.addConsoleOutput(`Error: ${result.error}`, 'error');
+            }
+
+        } catch (error) {
+            this.addConsoleOutput(`Network error: ${error.message}`, 'error');
+        }
+
+        this.addConsoleOutput('─'.repeat(50), 'info');
     }
 
     // File Management Methods
@@ -446,7 +516,9 @@ public class AdvancedJavaDemo {
             'css': 'fab fa-css3 file-icon',
             'md': 'fab fa-markdown file-icon',
             'json': 'fas fa-code file-icon',
-            'xml': 'fas fa-code file-icon'
+            'xml': 'fas fa-code file-icon',
+            'cpp': 'fas fa-code file-icon',
+            'c': 'fas fa-code file-icon'
         };
         return iconMap[ext] || 'fas fa-file file-icon';
     }
@@ -462,7 +534,9 @@ public class AdvancedJavaDemo {
             'css': 'css',
             'md': 'markdown',
             'json': 'json',
-            'xml': 'xml'
+            'xml': 'xml',
+            'cpp': 'cpp',
+            'c': 'c'
         };
         return langMap[ext] || 'plaintext';
     }
@@ -498,7 +572,7 @@ public class AdvancedJavaDemo {
             const currentCode = this.editor.getValue();
             const context = currentCode ? `Current code:\n\`\`\`${this.getCurrentLanguage()}\n${currentCode}\n\`\`\`` : '';
             
-            const response = await this.callOpenAI(message, context);
+            const response = await this.callAI(message, context);
             
             // Remove loading message and add response
             this.removeAiMessage(loadingId);
@@ -510,7 +584,7 @@ public class AdvancedJavaDemo {
         }
     }
 
-    async callOpenAI(message, context = '') {
+    async callAI(message, context = '') {
         const response = await fetch('/api/ai/chat', {
             method: 'POST',
             headers: {
@@ -618,9 +692,8 @@ public class AdvancedJavaDemo {
             });
 
             this.isInCall = true;
-            this.showVideoCallModal();
-            this.setupLocalVideo();
             this.updateCallButtons();
+            this.showNotification('Video call started', 'success');
             
             // Notify other participants
             if (this.socket) {
@@ -650,8 +723,8 @@ public class AdvancedJavaDemo {
             });
 
             this.isInCall = true;
-            this.showVideoCallModal();
             this.updateCallButtons();
+            this.showNotification('Audio call started', 'success');
             
             // Notify other participants
             if (this.socket) {
@@ -665,93 +738,6 @@ public class AdvancedJavaDemo {
         } catch (error) {
             console.error('Error starting audio call:', error);
             this.showNotification('Failed to start audio call', 'error');
-        }
-    }
-
-    setupLocalVideo() {
-        const localVideo = document.getElementById('localVideo');
-        localVideo.srcObject = this.localStream;
-    }
-
-    showVideoCallModal() {
-        document.getElementById('videoCallModal').classList.add('active');
-    }
-
-    hideVideoCallModal() {
-        document.getElementById('videoCallModal').classList.remove('active');
-    }
-
-    endCall() {
-        if (this.localStream) {
-            this.localStream.getTracks().forEach(track => track.stop());
-            this.localStream = null;
-        }
-
-        this.remoteStreams.forEach(stream => {
-            stream.getTracks().forEach(track => track.stop());
-        });
-        this.remoteStreams.clear();
-
-        this.isInCall = false;
-        this.hideVideoCallModal();
-        this.updateCallButtons();
-
-        // Notify other participants
-        if (this.socket) {
-            this.socket.emit('call-end', {
-                sessionId: this.sessionId,
-                userId: this.currentUser.id
-            });
-        }
-    }
-
-    toggleMicrophone() {
-        if (this.localStream) {
-            const audioTrack = this.localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                audioTrack.enabled = !audioTrack.enabled;
-                const btn = document.getElementById('toggleMic');
-                btn.classList.toggle('mute', !audioTrack.enabled);
-                btn.querySelector('i').className = audioTrack.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
-            }
-        }
-    }
-
-    toggleCamera() {
-        if (this.localStream) {
-            const videoTrack = this.localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                videoTrack.enabled = !videoTrack.enabled;
-                const btn = document.getElementById('toggleCamera');
-                btn.classList.toggle('mute', !videoTrack.enabled);
-                btn.querySelector('i').className = videoTrack.enabled ? 'fas fa-video' : 'fas fa-video-slash';
-            }
-        }
-    }
-
-    async shareScreen() {
-        try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
-                audio: true
-            });
-
-            // Replace video track with screen share
-            if (this.localStream) {
-                const videoTrack = screenStream.getVideoTracks()[0];
-                const sender = this.peer?.getSenders?.().find(s => 
-                    s.track && s.track.kind === 'video'
-                );
-                
-                if (sender) {
-                    await sender.replaceTrack(videoTrack);
-                }
-            }
-
-            this.showNotification('Screen sharing started', 'success');
-        } catch (error) {
-            console.error('Error sharing screen:', error);
-            this.showNotification('Failed to share screen', 'error');
         }
     }
 
@@ -798,12 +784,12 @@ public class AdvancedJavaDemo {
 
             if (response.ok) {
                 const result = await response.json();
-                this.showNotification(`Added collaborator: ${collaboratorId}`, 'success');
+                this.showNotification(result.message, 'success');
                 this.closeAddCollaboratorModal();
                 this.updateCollaboratorsList();
             } else {
                 const error = await response.json();
-                this.showNotification(`Failed to add collaborator: ${error.message}`, 'error');
+                this.showNotification(`Failed to add collaborator: ${error.error}`, 'error');
             }
         } catch (error) {
             this.showNotification(`Error adding collaborator: ${error.message}`, 'error');
@@ -999,9 +985,13 @@ public class AdvancedJavaDemo {
                     e.preventDefault();
                     this.createNewFile();
                     break;
-                case 'o':
+                case 'r':
                     e.preventDefault();
-                    // Open file dialog would go here
+                    this.runCode();
+                    break;
+                case '`':
+                    e.preventDefault();
+                    this.toggleConsole();
                     break;
             }
         }

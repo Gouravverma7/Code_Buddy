@@ -152,6 +152,17 @@
             box-shadow: 0 8px 25px rgba(156, 39, 176, 0.4);
         }
 
+        .btn-console {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+        }
+
+        .btn-console:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
+        }
+
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -492,6 +503,73 @@
             position: relative;
         }
 
+        /* Console Panel */
+        .console-panel {
+            height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+            flex-direction: column;
+        }
+
+        .console-panel.active {
+            display: flex;
+        }
+
+        .console-header {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .console-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ff9800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .console-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .console-output {
+            flex: 1;
+            padding: 16px 20px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background: #1a1a1a;
+        }
+
+        .output-line {
+            margin-bottom: 4px;
+            white-space: pre-wrap;
+        }
+
+        .output-line.success {
+            color: #4caf50;
+        }
+
+        .output-line.error {
+            color: #f44336;
+        }
+
+        .output-line.info {
+            color: #2196f3;
+        }
+
+        .output-line.warning {
+            color: #ff9800;
+        }
+
         /* Chat Panel */
         .chat-panel {
             width: 350px;
@@ -630,99 +708,6 @@
 
         .message-input::placeholder {
             color: rgba(255, 255, 255, 0.5);
-        }
-
-        /* Video Call Modal */
-        .video-call-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .video-call-modal.active {
-            display: flex;
-        }
-
-        .video-call-container {
-            background: rgba(0, 0, 0, 0.9);
-            border-radius: 16px;
-            padding: 20px;
-            max-width: 90vw;
-            max-height: 90vh;
-            position: relative;
-        }
-
-        .video-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .video-participant {
-            position: relative;
-            background: #1a1a1a;
-            border-radius: 12px;
-            overflow: hidden;
-            aspect-ratio: 16/9;
-        }
-
-        .video-element {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .participant-name {
-            position: absolute;
-            bottom: 8px;
-            left: 8px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-
-        .call-controls-bar {
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-        }
-
-        .call-control-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            padding: 12px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.3s ease;
-        }
-
-        .call-control-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .call-control-btn.mute {
-            background: rgba(244, 67, 54, 0.3);
-        }
-
-        .call-control-btn.end-call {
-            background: #f44336;
-        }
-
-        .call-control-btn.end-call:hover {
-            background: #d32f2f;
         }
 
         /* AI Chat Modal */
@@ -1093,6 +1078,10 @@
                     <i class="fas fa-robot"></i>
                     AI Assistant
                 </button>
+                <button id="consoleBtn" class="btn btn-console">
+                    <i class="fas fa-terminal"></i>
+                    Console
+                </button>
             </div>
             <div class="user-controls">
                 <div id="connectionStatus" class="connection-status disconnected">
@@ -1212,9 +1201,35 @@
                             <i class="fas fa-save"></i>
                             Save
                         </button>
+                        <button class="btn btn-primary" id="runCodeBtn">
+                            <i class="fas fa-play"></i>
+                            Run Code
+                        </button>
                     </div>
                 </div>
                 <div id="editor" class="code-editor"></div>
+                
+                <!-- Console Panel -->
+                <div class="console-panel" id="consolePanel">
+                    <div class="console-header">
+                        <div class="console-title">
+                            <i class="fas fa-terminal"></i>
+                            Console Output
+                        </div>
+                        <div class="console-controls">
+                            <button class="btn btn-outline" id="clearConsole">
+                                <i class="fas fa-trash"></i>
+                                Clear
+                            </button>
+                            <button class="close-btn" id="closeConsole">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="console-output" id="consoleOutput">
+                        <div class="output-line info">Console ready. Click "Run Code" to execute your program.</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Chat Panel -->
@@ -1288,6 +1303,7 @@
                         <br>• Code optimization and refactoring
                         <br>• Algorithm suggestions
                         <br>• Best practices and code reviews
+                        <br>• Writing new functions and classes
                         <br><br>
                         Feel free to ask me anything about your code or programming in general!
                     </div>
@@ -1297,32 +1313,6 @@
                 <textarea id="aiInput" class="ai-input" placeholder="Ask me anything about your code..."></textarea>
                 <button id="sendAiMessage" class="btn btn-ai">
                     <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Video Call Modal -->
-    <div class="video-call-modal" id="videoCallModal">
-        <div class="video-call-container">
-            <div class="video-grid" id="videoGrid">
-                <div class="video-participant">
-                    <video class="video-element" id="localVideo" autoplay muted></video>
-                    <div class="participant-name">You</div>
-                </div>
-            </div>
-            <div class="call-controls-bar">
-                <button class="call-control-btn" id="toggleMic" title="Toggle Microphone">
-                    <i class="fas fa-microphone"></i>
-                </button>
-                <button class="call-control-btn" id="toggleCamera" title="Toggle Camera">
-                    <i class="fas fa-video"></i>
-                </button>
-                <button class="call-control-btn" id="shareScreen" title="Share Screen">
-                    <i class="fas fa-desktop"></i>
-                </button>
-                <button class="call-control-btn end-call" id="endCall" title="End Call">
-                    <i class="fas fa-phone-slash"></i>
                 </button>
             </div>
         </div>
