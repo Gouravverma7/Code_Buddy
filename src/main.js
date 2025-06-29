@@ -1,4 +1,6 @@
 // Enhanced CodeBuddy.ai Web Application with All Advanced Features
+console.log('Loading CodeBuddy.ai...');
+
 class CodeBuddyApp {
     constructor() {
         this.editor = null;
@@ -21,114 +23,136 @@ class CodeBuddyApp {
         this.isInCall = false;
         this.consoleVisible = false;
         
+        console.log('CodeBuddy.ai constructor called');
         this.init();
     }
 
     async init() {
         console.log('Initializing CodeBuddy.ai...');
-        await this.initializeEditor();
-        this.setupEventListeners();
-        this.initializeFileSystem();
-        this.loadSampleCode();
-        this.setupWebRTC();
-        console.log('CodeBuddy.ai initialized successfully!');
+        try {
+            this.initializeFileSystem();
+            await this.initializeEditor();
+            this.setupEventListeners();
+            this.loadSampleCode();
+            this.setupWebRTC();
+            console.log('CodeBuddy.ai initialized successfully!');
+        } catch (error) {
+            console.error('Error initializing CodeBuddy.ai:', error);
+        }
     }
 
     async initializeEditor() {
-        return new Promise((resolve) => {
-            require.config({ 
-                paths: { 
-                    vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' 
-                } 
-            });
-            
-            require(['vs/editor/editor.main'], () => {
-                this.editor = monaco.editor.create(document.getElementById('editor'), {
-                    value: '',
-                    language: 'java',
-                    theme: 'vs-dark',
-                    fontSize: 14,
-                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-                    minimap: { enabled: true },
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    lineNumbers: 'on',
-                    roundedSelection: false,
-                    scrollbar: {
-                        vertical: 'visible',
-                        horizontal: 'visible'
-                    },
-                    wordWrap: 'on',
-                    contextmenu: true,
-                    mouseWheelZoom: true,
-                    smoothScrolling: true,
-                    cursorBlinking: 'smooth',
-                    renderWhitespace: 'selection'
-                });
-
-                // Listen for content changes
-                this.editor.onDidChangeModelContent((e) => {
-                    if (this.isConnected && this.socket) {
-                        this.sendCodeChange();
-                    }
-                    this.saveFileContent();
-                });
-
-                // Listen for cursor position changes
-                this.editor.onDidChangeCursorPosition((e) => {
-                    if (this.isConnected && this.socket) {
-                        this.sendCursorPosition(e.position);
-                    }
-                });
-
-                console.log('Monaco Editor initialized');
+        console.log('Initializing Monaco Editor...');
+        return new Promise((resolve, reject) => {
+            // Check if Monaco is already loaded
+            if (window.monaco) {
+                this.createEditor();
                 resolve();
-            });
+                return;
+            }
+
+            // Load Monaco Editor
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js';
+            script.onload = () => {
+                console.log('Monaco loader loaded');
+                
+                require.config({ 
+                    paths: { 
+                        vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' 
+                    } 
+                });
+                
+                require(['vs/editor/editor.main'], () => {
+                    console.log('Monaco editor main loaded');
+                    this.createEditor();
+                    resolve();
+                });
+            };
+            script.onerror = (error) => {
+                console.error('Failed to load Monaco Editor:', error);
+                reject(error);
+            };
+            document.head.appendChild(script);
         });
+    }
+
+    createEditor() {
+        const editorElement = document.getElementById('editor');
+        if (!editorElement) {
+            console.error('Editor element not found');
+            return;
+        }
+
+        try {
+            this.editor = monaco.editor.create(editorElement, {
+                value: '',
+                language: 'java',
+                theme: 'vs-dark',
+                fontSize: 14,
+                fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+                minimap: { enabled: true },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                lineNumbers: 'on',
+                roundedSelection: false,
+                scrollbar: {
+                    vertical: 'visible',
+                    horizontal: 'visible'
+                },
+                wordWrap: 'on',
+                contextmenu: true,
+                mouseWheelZoom: true,
+                smoothScrolling: true,
+                cursorBlinking: 'smooth',
+                renderWhitespace: 'selection'
+            });
+
+            // Listen for content changes
+            this.editor.onDidChangeModelContent((e) => {
+                if (this.isConnected && this.socket) {
+                    this.sendCodeChange();
+                }
+                this.saveFileContent();
+            });
+
+            // Listen for cursor position changes
+            this.editor.onDidChangeCursorPosition((e) => {
+                if (this.isConnected && this.socket) {
+                    this.sendCursorPosition(e.position);
+                }
+            });
+
+            console.log('Monaco Editor created successfully');
+        } catch (error) {
+            console.error('Error creating Monaco Editor:', error);
+        }
     }
 
     setupEventListeners() {
         console.log('Setting up event listeners...');
         
         // Connection controls
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
+        this.addEventListenerSafe('connectBtn', 'click', () => {
+            console.log('Connect button clicked');
+            this.connect();
+        });
         
-        if (connectBtn) {
-            connectBtn.addEventListener('click', () => {
-                console.log('Connect button clicked');
-                this.connect();
-            });
-        }
-        
-        if (disconnectBtn) {
-            disconnectBtn.addEventListener('click', () => {
-                console.log('Disconnect button clicked');
-                this.disconnect();
-            });
-        }
+        this.addEventListenerSafe('disconnectBtn', 'click', () => {
+            console.log('Disconnect button clicked');
+            this.disconnect();
+        });
 
         // AI Chat
-        const aiChatBtn = document.getElementById('aiChatBtn');
-        const closeAiChat = document.getElementById('closeAiChat');
-        const sendAiMessage = document.getElementById('sendAiMessage');
+        this.addEventListenerSafe('aiChatBtn', 'click', () => {
+            console.log('AI Chat button clicked');
+            this.openAiChat();
+        });
+        
+        this.addEventListenerSafe('closeAiChat', 'click', () => this.closeAiChat());
+        this.addEventListenerSafe('sendAiMessage', 'click', () => this.sendAiMessage());
+        
         const aiInput = document.getElementById('aiInput');
-        
-        if (aiChatBtn) {
-            aiChatBtn.addEventListener('click', () => {
-                console.log('AI Chat button clicked');
-                this.openAiChat();
-            });
-        }
-        
-        if (closeAiChat) {
-            closeAiChat.addEventListener('click', () => this.closeAiChat());
-        }
-        
-        if (sendAiMessage) {
-            sendAiMessage.addEventListener('click', () => this.sendAiMessage());
-        }
-        
         if (aiInput) {
             aiInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -139,70 +163,41 @@ class CodeBuddyApp {
         }
 
         // Console controls
-        const consoleBtn = document.getElementById('consoleBtn');
-        const closeConsole = document.getElementById('closeConsole');
-        const clearConsole = document.getElementById('clearConsole');
-        const runCodeBtn = document.getElementById('runCodeBtn');
+        this.addEventListenerSafe('consoleBtn', 'click', () => {
+            console.log('Console button clicked');
+            this.toggleConsole();
+        });
         
-        if (consoleBtn) {
-            consoleBtn.addEventListener('click', () => {
-                console.log('Console button clicked');
-                this.toggleConsole();
-            });
-        }
-        
-        if (closeConsole) {
-            closeConsole.addEventListener('click', () => this.hideConsole());
-        }
-        
-        if (clearConsole) {
-            clearConsole.addEventListener('click', () => this.clearConsole());
-        }
-        
-        if (runCodeBtn) {
-            runCodeBtn.addEventListener('click', () => {
-                console.log('Run Code button clicked');
-                this.runCode();
-            });
-        }
+        this.addEventListenerSafe('closeConsole', 'click', () => this.hideConsole());
+        this.addEventListenerSafe('clearConsole', 'click', () => this.clearConsole());
+        this.addEventListenerSafe('runCodeBtn', 'click', () => {
+            console.log('Run Code button clicked');
+            this.runCode();
+        });
 
         // File Explorer
-        const newFileBtn = document.getElementById('newFileBtn');
-        const newFolderBtn = document.getElementById('newFolderBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
+        this.addEventListenerSafe('newFileBtn', 'click', () => {
+            console.log('New File button clicked');
+            this.createNewFile();
+        });
         
-        if (newFileBtn) {
-            newFileBtn.addEventListener('click', () => {
-                console.log('New File button clicked');
-                this.createNewFile();
-            });
-        }
+        this.addEventListenerSafe('newFolderBtn', 'click', () => {
+            console.log('New Folder button clicked');
+            this.createNewFolder();
+        });
         
-        if (newFolderBtn) {
-            newFolderBtn.addEventListener('click', () => {
-                console.log('New Folder button clicked');
-                this.createNewFolder();
-            });
-        }
-        
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                console.log('Refresh button clicked');
-                this.refreshFileTree();
-            });
-        }
+        this.addEventListenerSafe('refreshBtn', 'click', () => {
+            console.log('Refresh button clicked');
+            this.refreshFileTree();
+        });
 
         // Chat controls
-        const sendBtn = document.getElementById('sendBtn');
+        this.addEventListenerSafe('sendBtn', 'click', () => {
+            console.log('Send message button clicked');
+            this.sendMessage();
+        });
+        
         const messageInput = document.getElementById('messageInput');
-        
-        if (sendBtn) {
-            sendBtn.addEventListener('click', () => {
-                console.log('Send message button clicked');
-                this.sendMessage();
-            });
-        }
-        
         if (messageInput) {
             messageInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -213,68 +208,54 @@ class CodeBuddyApp {
         }
 
         // Video/Audio call controls
-        const videoCallBtn = document.getElementById('videoCallBtn');
-        const audioCallBtn = document.getElementById('audioCallBtn');
+        this.addEventListenerSafe('videoCallBtn', 'click', () => {
+            console.log('Video call button clicked');
+            this.startVideoCall();
+        });
         
-        if (videoCallBtn) {
-            videoCallBtn.addEventListener('click', () => {
-                console.log('Video call button clicked');
-                this.startVideoCall();
-            });
-        }
-        
-        if (audioCallBtn) {
-            audioCallBtn.addEventListener('click', () => {
-                console.log('Audio call button clicked');
-                this.startAudioCall();
-            });
-        }
+        this.addEventListenerSafe('audioCallBtn', 'click', () => {
+            console.log('Audio call button clicked');
+            this.startAudioCall();
+        });
 
         // Collaborator management
-        const addCollaboratorBtn = document.getElementById('addCollaboratorBtn');
-        const cancelAddCollaborator = document.getElementById('cancelAddCollaborator');
-        const confirmAddCollaborator = document.getElementById('confirmAddCollaborator');
+        this.addEventListenerSafe('addCollaboratorBtn', 'click', () => {
+            console.log('Add collaborator button clicked');
+            this.openAddCollaboratorModal();
+        });
         
-        if (addCollaboratorBtn) {
-            addCollaboratorBtn.addEventListener('click', () => {
-                console.log('Add collaborator button clicked');
-                this.openAddCollaboratorModal();
-            });
-        }
-        
-        if (cancelAddCollaborator) {
-            cancelAddCollaborator.addEventListener('click', () => this.closeAddCollaboratorModal());
-        }
-        
-        if (confirmAddCollaborator) {
-            confirmAddCollaborator.addEventListener('click', () => this.addCollaborator());
-        }
+        this.addEventListenerSafe('cancelAddCollaborator', 'click', () => this.closeAddCollaboratorModal());
+        this.addEventListenerSafe('confirmAddCollaborator', 'click', () => this.addCollaborator());
 
         // File tree interactions
         this.setupFileTreeListeners();
 
         // GitHub export
-        const githubExport = document.getElementById('githubExport');
-        if (githubExport) {
-            githubExport.addEventListener('click', () => {
-                console.log('GitHub export button clicked');
-                this.exportToGitHub();
-            });
-        }
+        this.addEventListenerSafe('githubExport', 'click', () => {
+            console.log('GitHub export button clicked');
+            this.exportToGitHub();
+        });
 
         // Save functionality
-        const saveBtn = document.getElementById('saveBtn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
-                console.log('Save button clicked');
-                this.saveSession();
-            });
-        }
+        this.addEventListenerSafe('saveBtn', 'click', () => {
+            console.log('Save button clicked');
+            this.saveSession();
+        });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
         
         console.log('Event listeners set up successfully');
+    }
+
+    addEventListenerSafe(elementId, event, handler) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.addEventListener(event, handler);
+            console.log(`Event listener added for ${elementId}`);
+        } else {
+            console.warn(`Element ${elementId} not found`);
+        }
     }
 
     setupFileTreeListeners() {
@@ -419,8 +400,8 @@ public class HelloWorld {
     async runCode() {
         console.log('Running code...');
         
-        if (!this.currentFile) {
-            this.showNotification('No file selected to run', 'warning');
+        if (!this.editor) {
+            this.showNotification('Editor not ready', 'warning');
             return;
         }
 
@@ -438,7 +419,7 @@ public class HelloWorld {
         // Get language and filename
         const file = this.fileSystem.get(this.currentFile);
         const language = file ? file.language : 'java';
-        const filename = this.currentFile.split('/').pop().split('.')[0];
+        const filename = this.currentFile ? this.currentFile.split('/').pop().split('.')[0] : 'Main';
 
         this.addConsoleOutput(`Executing ${language} code...`, 'info');
         this.addConsoleOutput('─'.repeat(50), 'info');
@@ -553,14 +534,16 @@ public class HelloWorld {
 
         // Switch to file
         this.currentFile = path;
-        this.editor.setValue(file.content);
-        this.setEditorLanguage(file.language);
+        if (this.editor) {
+            this.editor.setValue(file.content);
+            this.setEditorLanguage(file.language);
+        }
         this.updateActiveTab(path);
         this.updateActiveFileInTree(path);
     }
 
     saveFileContent() {
-        if (this.currentFile && this.fileSystem.has(this.currentFile)) {
+        if (this.currentFile && this.fileSystem.has(this.currentFile) && this.editor) {
             const file = this.fileSystem.get(this.currentFile);
             file.content = this.editor.getValue();
         }
@@ -606,7 +589,9 @@ public class HelloWorld {
             if (remainingTabs.length > 0) {
                 this.openFile(remainingTabs[0]);
             } else {
-                this.editor.setValue('');
+                if (this.editor) {
+                    this.editor.setValue('');
+                }
                 this.currentFile = null;
             }
         }
@@ -706,8 +691,10 @@ public class HelloWorld {
     }
 
     setEditorLanguage(language) {
-        const model = this.editor.getModel();
-        monaco.editor.setModelLanguage(model, language);
+        if (this.editor && window.monaco) {
+            const model = this.editor.getModel();
+            monaco.editor.setModelLanguage(model, language);
+        }
     }
 
     // AI Chat Methods
@@ -744,7 +731,7 @@ public class HelloWorld {
 
         try {
             // Get current code context
-            const currentCode = this.editor.getValue();
+            const currentCode = this.editor ? this.editor.getValue() : '';
             const context = currentCode ? `Current code:\n\`\`\`${this.getCurrentLanguage()}\n${currentCode}\n\`\`\`` : '';
             
             const response = await this.callAI(message, context);
@@ -1012,6 +999,13 @@ public class HelloWorld {
         console.log('Connecting to session:', this.sessionId);
 
         try {
+            // Check if Socket.IO is available
+            if (typeof io === 'undefined') {
+                console.error('Socket.IO not loaded');
+                this.showNotification('Socket.IO not available', 'error');
+                return;
+            }
+
             // Initialize Socket.IO connection
             this.socket = io();
             
@@ -1097,7 +1091,7 @@ public class HelloWorld {
     }
 
     sendCodeChange() {
-        if (!this.isConnected || !this.socket) return;
+        if (!this.isConnected || !this.socket || !this.editor) return;
         
         this.socket.emit('code-change', {
             sessionId: this.sessionId,
@@ -1120,7 +1114,7 @@ public class HelloWorld {
     }
 
     handleRemoteCodeChange(data) {
-        if (data.filename === this.currentFile) {
+        if (data.filename === this.currentFile && this.editor) {
             const currentPosition = this.editor.getPosition();
             this.editor.setValue(data.content);
             this.editor.setPosition(currentPosition);
@@ -1312,7 +1306,24 @@ public class HelloWorld {
 }
 
 // Initialize the application when the page loads
+console.log('Setting up DOMContentLoaded listener...');
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing CodeBuddy.ai...');
-    new CodeBuddyApp();
+    try {
+        window.codeBuddyApp = new CodeBuddyApp();
+    } catch (error) {
+        console.error('Failed to initialize CodeBuddy.ai:', error);
+    }
 });
+
+// Also try to initialize immediately if DOM is already loaded
+if (document.readyState === 'loading') {
+    console.log('DOM is still loading, waiting for DOMContentLoaded...');
+} else {
+    console.log('DOM already loaded, initializing immediately...');
+    try {
+        window.codeBuddyApp = new CodeBuddyApp();
+    } catch (error) {
+        console.error('Failed to initialize CodeBuddy.ai:', error);
+    }
+}
