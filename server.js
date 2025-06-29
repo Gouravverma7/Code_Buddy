@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const OpenAI = require('openai');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,9 +19,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('dist'));
 
+// Initialize OpenAI
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || 'your-openai-api-key-here'
+});
+
 // In-memory storage for demo (use database in production)
 const sessions = new Map();
 const users = new Map();
+const collaborators = new Map();
 
 // Session management
 class CodeSession {
@@ -33,23 +40,26 @@ class CodeSession {
         this.chatMessages = [];
         this.createdAt = new Date();
         this.isActive = true;
+        this.callParticipants = new Set();
         
         // Initialize with sample file
-        this.files.set('Main.java', `package com.codebuddy.example;
+        this.files.set('src/Main.java', `package com.codebuddy.example;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        System.out.println("Welcome to CodeBuddy.ai!");
+        System.out.println("Welcome to CodeBuddy.ai Enhanced!");
     }
 }`);
     }
     
-    addCollaborator(userId) {
+    addCollaborator(userId, permission = 'edit') {
         this.collaborators.add(userId);
+        collaborators.set(userId, { sessionId: this.id, permission });
     }
     
     removeCollaborator(userId) {
         this.collaborators.delete(userId);
+        collaborators.delete(userId);
     }
     
     updateFile(filename, content) {
@@ -97,126 +107,148 @@ app.post('/api/sessions', (req, res) => {
     });
 });
 
-// AI API endpoints (mock responses for demo)
-app.post('/api/ai/explain', async (req, res) => {
-    const { code, language } = req.body;
+// Enhanced AI API endpoint with OpenAI integration
+app.post('/api/ai/chat', async (req, res) => {
+    const { message, context, sessionId, userId } = req.body;
     
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-    
-    res.json({
-        response: `This ${language} code demonstrates several programming concepts including class definitions, method declarations, and basic I/O operations. The main method serves as the entry point for the application.`,
-        suggestedCode: null,
-        success: true
-    });
-});
+    try {
+        // Prepare messages for OpenAI
+        const messages = [
+            {
+                role: 'system',
+                content: `You are an expert programming assistant for CodeBuddy.ai, a collaborative code editor. 
+                You help developers with code explanations, debugging, optimization, and best practices. 
+                Always provide clear, helpful, and actionable advice. When showing code examples, 
+                use proper formatting and explain your reasoning.`
+            }
+        ];
 
-app.post('/api/ai/fix', async (req, res) => {
-    const { code, language } = req.body;
-    
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
-    
-    res.json({
-        response: "I've analyzed your code and found it to be well-structured. Here are some suggestions for improvement:",
-        suggestedCode: `// Add input validation
-if (args.length > 0) {
-    System.out.println("Arguments provided: " + String.join(", ", args));
-}
-System.out.println("Welcome to CodeBuddy.ai!");`,
-        success: true
-    });
-});
+        if (context) {
+            messages.push({
+                role: 'user',
+                content: `Context: ${context}\n\nQuestion: ${message}`
+            });
+        } else {
+            messages.push({
+                role: 'user',
+                content: message
+            });
+        }
 
-app.post('/api/ai/comment', async (req, res) => {
-    const { code, language } = req.body;
-    
-    await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 1800));
-    
-    res.json({
-        response: "I've added comprehensive comments to explain the code structure and functionality.",
-        suggestedCode: `/**
- * Main application class for CodeBuddy.ai demo
- * Demonstrates basic Java program structure
- */
-public class HelloWorld {
-    /**
-     * Application entry point
-     * @param args Command line arguments
-     */
-    public static void main(String[] args) {
-        // Print welcome message to console
-        System.out.println("Welcome to CodeBuddy.ai!");
-    }
-}`,
-        success: true
-    });
-});
+        // Call OpenAI API
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: messages,
+            max_tokens: 1000,
+            temperature: 0.7
+        });
 
-app.post('/api/ai/optimize', async (req, res) => {
-    const { code, language } = req.body;
-    
-    await new Promise(resolve => setTimeout(resolve, 1800 + Math.random() * 2200));
-    
-    res.json({
-        response: "Here's an optimized version with improved performance and readability:",
-        suggestedCode: `public class HelloWorld {
-    private static final String WELCOME_MESSAGE = "Welcome to CodeBuddy.ai!";
-    
-    public static void main(String[] args) {
-        displayWelcomeMessage();
-    }
-    
-    private static void displayWelcomeMessage() {
-        System.out.println(WELCOME_MESSAGE);
-    }
-}`,
-        success: true
-    });
-});
+        const response = completion.choices[0].message.content;
 
-app.post('/api/ai/review', async (req, res) => {
-    const { code, language } = req.body;
-    
-    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2500));
-    
-    res.json({
-        response: `Code Review Summary:
+        res.json({
+            response: response,
+            success: true,
+            timestamp: new Date()
+        });
+
+    } catch (error) {
+        console.error('OpenAI API error:', error);
         
-✅ Strengths:
-- Clean and readable code structure
-- Proper use of main method
-- Good naming conventions
-
-🔍 Suggestions:
-- Consider adding error handling
-- Add documentation for public methods
-- Follow consistent formatting standards
-
-Overall Rating: 8/10 - Well-written code!`,
-        suggestedCode: null,
-        success: true
-    });
+        // Fallback response if OpenAI fails
+        const fallbackResponse = generateFallbackResponse(message);
+        
+        res.json({
+            response: fallbackResponse,
+            success: true,
+            fallback: true,
+            timestamp: new Date()
+        });
+    }
 });
 
-// GitHub export simulation
-app.post('/api/github/export', async (req, res) => {
-    const { sessionId, repoName, accessToken } = req.body;
+// Fallback AI responses when OpenAI is not available
+function generateFallbackResponse(message) {
+    const lowerMessage = message.toLowerCase();
     
-    const session = sessions.get(sessionId);
-    if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
+    if (lowerMessage.includes('explain') || lowerMessage.includes('what does')) {
+        return "I'd be happy to explain your code! However, I'm currently running in fallback mode. For the best AI assistance, please ensure your OpenAI API key is configured. In the meantime, I can suggest breaking down your code into smaller functions and adding comments to improve readability.";
     }
     
-    // Simulate GitHub API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (lowerMessage.includes('bug') || lowerMessage.includes('error') || lowerMessage.includes('fix')) {
+        return "To help debug your code, I recommend: 1) Check for syntax errors, 2) Verify variable names and types, 3) Add console.log statements to trace execution, 4) Use your browser's developer tools. For more advanced debugging assistance, please configure your OpenAI API key.";
+    }
     
-    res.json({
-        url: `https://github.com/user/${repoName}`,
-        message: 'Successfully exported to GitHub repository'
-    });
+    if (lowerMessage.includes('optimize') || lowerMessage.includes('performance')) {
+        return "For code optimization, consider: 1) Reducing nested loops, 2) Using efficient data structures, 3) Minimizing DOM manipulations, 4) Implementing caching where appropriate. For detailed optimization suggestions, please set up your OpenAI API key.";
+    }
+    
+    return "I'm here to help with your coding questions! Currently running in fallback mode - for the best AI assistance, please configure your OpenAI API key in the server environment. I can still help with general programming advice and best practices.";
+}
+
+// Collaborator management
+app.post('/api/collaborators/add', async (req, res) => {
+    const { sessionId, collaboratorId, permissionLevel } = req.body;
+    
+    try {
+        const session = sessions.get(sessionId);
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        // In a real implementation, you would:
+        // 1. Validate the collaborator ID (check if user exists)
+        // 2. Send invitation notification
+        // 3. Handle GitHub integration for GitHub usernames
+        
+        session.addCollaborator(collaboratorId, permissionLevel);
+        
+        // Notify other session participants
+        io.to(sessionId).emit('collaborator-added', {
+            collaboratorId,
+            permissionLevel,
+            timestamp: new Date()
+        });
+
+        res.json({
+            success: true,
+            message: `Collaborator ${collaboratorId} added successfully`
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-// Socket.IO connection handling
+// GitHub export with enhanced file support
+app.post('/api/github/export', async (req, res) => {
+    const { sessionId, repoName, accessToken, files } = req.body;
+    
+    try {
+        const session = sessions.get(sessionId);
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        // In a real implementation, you would use the GitHub API
+        // to create a repository and upload files
+        
+        // Simulate GitHub API call
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const repoUrl = `https://github.com/user/${repoName}`;
+        
+        res.json({
+            url: repoUrl,
+            message: 'Successfully exported to GitHub repository',
+            filesExported: Object.keys(files).length
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Socket.IO connection handling with enhanced features
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
     
@@ -245,10 +277,11 @@ io.on('connection', (socket) => {
         });
         
         // Send current session state to the new user
-        socket.emit('session-state', {
+        socket.emit('session-joined', {
+            sessionId,
             files: Object.fromEntries(session.files),
             collaborators: Array.from(session.collaborators),
-            chatMessages: session.chatMessages.slice(-50) // Last 50 messages
+            chatMessages: session.chatMessages.slice(-50)
         });
         
         console.log(`User ${username} joined session ${sessionId}`);
@@ -258,7 +291,7 @@ io.on('connection', (socket) => {
         const user = users.get(socket.id);
         if (!user) return;
         
-        const { filename, content, cursorPosition } = data;
+        const { filename, content, timestamp } = data;
         const session = sessions.get(user.sessionId);
         
         if (session) {
@@ -270,8 +303,7 @@ io.on('connection', (socket) => {
                 content,
                 userId: user.userId,
                 username: user.username,
-                cursorPosition,
-                timestamp: new Date()
+                timestamp
             });
         }
     });
@@ -280,18 +312,18 @@ io.on('connection', (socket) => {
         const user = users.get(socket.id);
         if (!user) return;
         
-        const { message } = data;
+        const { message, timestamp } = data;
         const session = sessions.get(user.sessionId);
         
         if (session) {
             session.addChatMessage(user.userId, user.username, message);
             
-            // Broadcast to all users in the session (including sender)
+            // Broadcast to all users in the session
             io.to(user.sessionId).emit('chat-message', {
                 userId: user.userId,
                 username: user.username,
                 message,
-                timestamp: new Date()
+                timestamp: timestamp || new Date()
             });
         }
     });
@@ -305,8 +337,77 @@ io.on('connection', (socket) => {
             userId: user.userId,
             username: user.username,
             position: data.position,
-            timestamp: new Date()
+            timestamp: data.timestamp
         });
+    });
+
+    // Video/Audio call signaling
+    socket.on('call-start', (data) => {
+        const user = users.get(socket.id);
+        if (!user) return;
+
+        const session = sessions.get(user.sessionId);
+        if (session) {
+            session.callParticipants.add(user.userId);
+            
+            // Notify other participants about the call
+            socket.to(user.sessionId).emit('call-invitation', {
+                userId: user.userId,
+                username: user.username,
+                type: data.type,
+                timestamp: new Date()
+            });
+        }
+    });
+
+    socket.on('call-answer', (data) => {
+        const user = users.get(socket.id);
+        if (!user) return;
+
+        // Handle WebRTC signaling
+        socket.to(user.sessionId).emit('call-answer', {
+            userId: user.userId,
+            answer: data.answer
+        });
+    });
+
+    socket.on('call-offer', (data) => {
+        const user = users.get(socket.id);
+        if (!user) return;
+
+        // Handle WebRTC signaling
+        socket.to(user.sessionId).emit('call-offer', {
+            userId: user.userId,
+            offer: data.offer
+        });
+    });
+
+    socket.on('ice-candidate', (data) => {
+        const user = users.get(socket.id);
+        if (!user) return;
+
+        // Handle ICE candidates for WebRTC
+        socket.to(user.sessionId).emit('ice-candidate', {
+            userId: user.userId,
+            candidate: data.candidate
+        });
+    });
+
+    socket.on('call-end', (data) => {
+        const user = users.get(socket.id);
+        if (!user) return;
+
+        const session = sessions.get(user.sessionId);
+        if (session) {
+            session.callParticipants.delete(user.userId);
+            
+            // Notify other participants
+            socket.to(user.sessionId).emit('call-ended', {
+                userId: user.userId,
+                username: user.username,
+                timestamp: new Date()
+            });
+        }
     });
     
     socket.on('disconnect', () => {
@@ -315,6 +416,7 @@ io.on('connection', (socket) => {
             const session = sessions.get(user.sessionId);
             if (session) {
                 session.removeCollaborator(user.userId);
+                session.callParticipants.delete(user.userId);
                 
                 // Notify others in the session
                 socket.to(user.sessionId).emit('user-left', {
@@ -338,15 +440,22 @@ app.get('/health', (req, res) => {
         status: 'healthy',
         timestamp: new Date(),
         sessions: sessions.size,
-        connectedUsers: users.size
+        connectedUsers: users.size,
+        features: {
+            aiChat: !!process.env.OPENAI_API_KEY,
+            videoCall: true,
+            collaboration: true,
+            githubIntegration: true
+        }
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 CodeBuddy.ai server running on port ${PORT}`);
+    console.log(`🚀 CodeBuddy.ai Enhanced server running on port ${PORT}`);
     console.log(`📝 Web interface: http://localhost:${PORT}`);
     console.log(`🔧 Health check: http://localhost:${PORT}/health`);
+    console.log(`🤖 AI Chat: ${process.env.OPENAI_API_KEY ? 'Enabled' : 'Fallback mode (set OPENAI_API_KEY)'}`);
 });
 
 module.exports = { app, server, io };

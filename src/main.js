@@ -1,4 +1,4 @@
-// CodeBuddy.ai Enhanced Web Application
+// Enhanced CodeBuddy.ai Web Application with Advanced Features
 class CodeBuddyApp {
     constructor() {
         this.editor = null;
@@ -10,6 +10,15 @@ class CodeBuddyApp {
             name: 'You',
             avatar: 'Y'
         };
+        this.fileSystem = new Map();
+        this.openTabs = new Map();
+        this.currentFile = 'src/Main.java';
+        this.collaborators = new Map();
+        this.aiMessages = [];
+        this.peer = null;
+        this.localStream = null;
+        this.remoteStreams = new Map();
+        this.isInCall = false;
         
         this.init();
     }
@@ -17,8 +26,9 @@ class CodeBuddyApp {
     async init() {
         await this.initializeEditor();
         this.setupEventListeners();
+        this.initializeFileSystem();
         this.loadSampleCode();
-        this.showWelcomeMessage();
+        this.setupWebRTC();
     }
 
     async initializeEditor() {
@@ -58,6 +68,7 @@ class CodeBuddyApp {
                     if (this.isConnected && this.socket) {
                         this.sendCodeChange();
                     }
+                    this.saveFileContent();
                 });
 
                 // Listen for cursor position changes
@@ -77,16 +88,21 @@ class CodeBuddyApp {
         document.getElementById('connectBtn').addEventListener('click', () => this.connect());
         document.getElementById('disconnectBtn').addEventListener('click', () => this.disconnect());
 
-        // AI controls
-        document.getElementById('explainBtn').addEventListener('click', () => this.explainCode());
-        document.getElementById('fixBtn').addEventListener('click', () => this.fixCode());
-        document.getElementById('commentBtn').addEventListener('click', () => this.addComments());
-        document.getElementById('optimizeBtn').addEventListener('click', () => this.optimizeCode());
-        document.getElementById('reviewBtn').addEventListener('click', () => this.reviewCode());
+        // AI Chat
+        document.getElementById('aiChatBtn').addEventListener('click', () => this.openAiChat());
+        document.getElementById('closeAiChat').addEventListener('click', () => this.closeAiChat());
+        document.getElementById('sendAiMessage').addEventListener('click', () => this.sendAiMessage());
+        document.getElementById('aiInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendAiMessage();
+            }
+        });
 
-        // AI panel controls
-        document.getElementById('closeAiPanel').addEventListener('click', () => this.closeAiPanel());
-        document.getElementById('applyCodeBtn').addEventListener('click', () => this.applyAiCode());
+        // File Explorer
+        document.getElementById('newFileBtn').addEventListener('click', () => this.createNewFile());
+        document.getElementById('newFolderBtn').addEventListener('click', () => this.createNewFolder());
+        document.getElementById('refreshBtn').addEventListener('click', () => this.refreshFileTree());
 
         // Chat controls
         document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
@@ -97,38 +113,76 @@ class CodeBuddyApp {
             }
         });
 
-        // File controls
-        document.getElementById('addFileBtn').addEventListener('click', () => this.addFile());
+        // Video/Audio call controls
+        document.getElementById('videoCallBtn').addEventListener('click', () => this.startVideoCall());
+        document.getElementById('audioCallBtn').addEventListener('click', () => this.startAudioCall());
+        document.getElementById('endCall').addEventListener('click', () => this.endCall());
+        document.getElementById('toggleMic').addEventListener('click', () => this.toggleMicrophone());
+        document.getElementById('toggleCamera').addEventListener('click', () => this.toggleCamera());
+        document.getElementById('shareScreen').addEventListener('click', () => this.shareScreen());
+
+        // Collaborator management
+        document.getElementById('addCollaboratorBtn').addEventListener('click', () => this.openAddCollaboratorModal());
+        document.getElementById('cancelAddCollaborator').addEventListener('click', () => this.closeAddCollaboratorModal());
+        document.getElementById('confirmAddCollaborator').addEventListener('click', () => this.addCollaborator());
+
+        // File tree interactions
+        this.setupFileTreeListeners();
 
         // GitHub export
         document.getElementById('githubExport').addEventListener('click', () => this.exportToGitHub());
 
-        // File tab switching
-        document.querySelectorAll('.file-item').forEach(item => {
-            item.addEventListener('click', (e) => this.switchFile(e.target.closest('.file-item')));
-        });
+        // Save functionality
+        document.getElementById('saveBtn').addEventListener('click', () => this.saveSession());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
     }
 
-    handleKeyboardShortcuts(e) {
-        if (e.ctrlKey || e.metaKey) {
-            switch (e.key) {
-                case 's':
-                    e.preventDefault();
-                    this.saveSession();
-                    break;
-                case 'e':
-                    e.preventDefault();
-                    this.explainCode();
-                    break;
-                case '/':
-                    e.preventDefault();
-                    this.addComments();
-                    break;
+    setupFileTreeListeners() {
+        const fileTree = document.getElementById('fileTree');
+        
+        fileTree.addEventListener('click', (e) => {
+            const treeItem = e.target.closest('.tree-item');
+            if (!treeItem) return;
+
+            const action = e.target.closest('.item-action');
+            if (action) {
+                e.stopPropagation();
+                this.handleFileAction(action, treeItem);
+                return;
             }
+
+            if (treeItem.classList.contains('file')) {
+                this.openFile(treeItem.dataset.path);
+            } else if (treeItem.classList.contains('folder')) {
+                this.toggleFolder(treeItem);
+            }
+        });
+    }
+
+    handleFileAction(actionBtn, treeItem) {
+        const action = actionBtn.title.toLowerCase();
+        const path = treeItem.dataset.path;
+
+        switch (action) {
+            case 'add file':
+                this.createNewFile(path);
+                break;
+            case 'rename':
+                this.renameItem(path);
+                break;
+            case 'delete':
+                this.deleteItem(path);
+                break;
         }
+    }
+
+    initializeFileSystem() {
+        this.fileSystem.set('src/', { type: 'folder', children: ['src/Main.java', 'src/Utils.java'] });
+        this.fileSystem.set('src/Main.java', { type: 'file', content: '', language: 'java' });
+        this.fileSystem.set('src/Utils.java', { type: 'file', content: '', language: 'java' });
+        this.fileSystem.set('README.md', { type: 'file', content: '', language: 'markdown' });
     }
 
     loadSampleCode() {
@@ -177,165 +231,593 @@ public class AdvancedJavaDemo {
         });
     }
     
-    /**
-     * Demonstrates optional handling and error management
-     */
-    public Optional<TaskResult> findBestResult(String category) {
-        return Optional.ofNullable(tasksByCategory.get(category))
-            .orElse(Collections.emptyList())
-            .stream()
-            .map(this::processTask)
-            .filter(Objects::nonNull)
-            .max(Comparator.comparing(TaskResult::getScore));
-    }
-    
-    private TaskResult processTask(Task task) {
-        try {
-            return processor.process(task);
-        } catch (ProcessingException e) {
-            System.err.println("Failed to process task: " + task.getId());
-            return null;
-        }
-    }
-    
-    // Inner classes for demonstration
-    public static class Task {
-        private final String id;
-        private final String category;
-        private final Priority priority;
-        private final boolean active;
-        
-        public Task(String id, String category, Priority priority, boolean active) {
-            this.id = id;
-            this.category = category;
-            this.priority = priority;
-            this.active = active;
-        }
-        
-        // Getters
-        public String getId() { return id; }
-        public String getCategory() { return category; }
-        public Priority getPriority() { return priority; }
-        public boolean isActive() { return active; }
-    }
-    
-    public enum Priority {
-        LOW(1), MEDIUM(2), HIGH(3), CRITICAL(4);
-        
-        private final int value;
-        
-        Priority(int value) {
-            this.value = value;
-        }
-        
-        public int getValue() { return value; }
-    }
-    
-    public static class TaskResult {
-        private final String taskId;
-        private final double score;
-        private final long processingTime;
-        
-        public TaskResult(String taskId, double score, long processingTime) {
-            this.taskId = taskId;
-            this.score = score;
-            this.processingTime = processingTime;
-        }
-        
-        public String getTaskId() { return taskId; }
-        public double getScore() { return score; }
-        public long getProcessingTime() { return processingTime; }
-    }
-    
-    public static class TaskProcessor {
-        public void execute(Task task) {
-            // Simulate task execution
-            System.out.println("Executing task: " + task.getId());
-        }
-        
-        public TaskResult process(Task task) throws ProcessingException {
-            long startTime = System.currentTimeMillis();
-            
-            // Simulate processing
-            if (Math.random() < 0.1) {
-                throw new ProcessingException("Random processing failure");
-            }
-            
-            double score = Math.random() * 100;
-            long processingTime = System.currentTimeMillis() - startTime;
-            
-            return new TaskResult(task.getId(), score, processingTime);
-        }
-    }
-    
-    public static class ProcessingException extends Exception {
-        public ProcessingException(String message) {
-            super(message);
-        }
-    }
-    
     public static void main(String[] args) {
+        System.out.println("Welcome to CodeBuddy.ai Enhanced!");
         AdvancedJavaDemo demo = new AdvancedJavaDemo();
-        
-        // Create sample tasks
-        List<Task> tasks = Arrays.asList(
-            new Task("T001", "Development", Priority.HIGH, true),
-            new Task("T002", "Testing", Priority.MEDIUM, true),
-            new Task("T003", "Documentation", Priority.LOW, true),
-            new Task("T004", "Deployment", Priority.CRITICAL, true)
-        );
-        
-        System.out.println("=== CodeBuddy.ai Advanced Java Demo ===");
-        demo.processTasks(tasks);
-        
-        // Find best result
-        demo.findBestResult("Development")
-            .ifPresentOrElse(
-                result -> System.out.printf("Best result: %.2f (processed in %dms)%n", 
-                    result.getScore(), result.getProcessingTime()),
-                () -> System.out.println("No results found")
-            );
+        // Implementation continues...
     }
 }`;
+        
+        this.fileSystem.set('src/Main.java', { 
+            type: 'file', 
+            content: sampleCode, 
+            language: 'java' 
+        });
         
         if (this.editor) {
             this.editor.setValue(sampleCode);
         }
     }
 
-    showWelcomeMessage() {
-        this.showAiPanel();
-        document.getElementById('aiResponse').innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <h3 style="color: #4ecdc4; margin-bottom: 16px;">
-                    <i class="fas fa-rocket"></i> Welcome to CodeBuddy.ai Enhanced!
-                </h3>
-                <p style="margin-bottom: 16px;">Your AI-powered collaborative coding companion is ready to help you:</p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0;">
-                    <div style="background: rgba(78, 205, 196, 0.1); padding: 12px; border-radius: 8px;">
-                        <i class="fas fa-lightbulb" style="color: #4ecdc4;"></i> <strong>Explain Code</strong><br>
-                        <small>Get detailed explanations of complex code</small>
-                    </div>
-                    <div style="background: rgba(255, 107, 107, 0.1); padding: 12px; border-radius: 8px;">
-                        <i class="fas fa-wrench" style="color: #ff6b6b;"></i> <strong>Fix Bugs</strong><br>
-                        <small>Identify and resolve code issues</small>
-                    </div>
-                    <div style="background: rgba(255, 193, 7, 0.1); padding: 12px; border-radius: 8px;">
-                        <i class="fas fa-comment" style="color: #ffc107;"></i> <strong>Add Comments</strong><br>
-                        <small>Generate meaningful documentation</small>
-                    </div>
-                    <div style="background: rgba(156, 39, 176, 0.1); padding: 12px; border-radius: 8px;">
-                        <i class="fas fa-rocket" style="color: #9c27b0;"></i> <strong>Optimize</strong><br>
-                        <small>Improve performance and readability</small>
-                    </div>
+    // File Management Methods
+    createNewFile(parentPath = '') {
+        const fileName = prompt('Enter file name:');
+        if (!fileName) return;
+
+        const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
+        const language = this.getLanguageFromExtension(fileName);
+        
+        this.fileSystem.set(fullPath, {
+            type: 'file',
+            content: '',
+            language: language
+        });
+
+        this.refreshFileTree();
+        this.openFile(fullPath);
+        this.showNotification(`Created file: ${fileName}`, 'success');
+    }
+
+    createNewFolder() {
+        const folderName = prompt('Enter folder name:');
+        if (!folderName) return;
+
+        this.fileSystem.set(`${folderName}/`, {
+            type: 'folder',
+            children: []
+        });
+
+        this.refreshFileTree();
+        this.showNotification(`Created folder: ${folderName}`, 'success');
+    }
+
+    renameItem(path) {
+        const currentName = path.split('/').pop();
+        const newName = prompt('Enter new name:', currentName);
+        if (!newName || newName === currentName) return;
+
+        const parentPath = path.substring(0, path.lastIndexOf('/'));
+        const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+
+        const item = this.fileSystem.get(path);
+        this.fileSystem.delete(path);
+        this.fileSystem.set(newPath, item);
+
+        this.refreshFileTree();
+        this.showNotification(`Renamed to: ${newName}`, 'success');
+    }
+
+    deleteItem(path) {
+        if (!confirm(`Are you sure you want to delete ${path}?`)) return;
+
+        this.fileSystem.delete(path);
+        
+        // Close tab if file is open
+        if (this.openTabs.has(path)) {
+            this.closeTab(path);
+        }
+
+        this.refreshFileTree();
+        this.showNotification(`Deleted: ${path}`, 'success');
+    }
+
+    openFile(path) {
+        const file = this.fileSystem.get(path);
+        if (!file || file.type !== 'file') return;
+
+        // Add to open tabs
+        if (!this.openTabs.has(path)) {
+            this.openTabs.set(path, file);
+            this.addFileTab(path);
+        }
+
+        // Switch to file
+        this.currentFile = path;
+        this.editor.setValue(file.content);
+        this.setEditorLanguage(file.language);
+        this.updateActiveTab(path);
+        this.updateActiveFileInTree(path);
+    }
+
+    saveFileContent() {
+        if (this.currentFile && this.fileSystem.has(this.currentFile)) {
+            const file = this.fileSystem.get(this.currentFile);
+            file.content = this.editor.getValue();
+        }
+    }
+
+    addFileTab(path) {
+        const fileName = path.split('/').pop();
+        const icon = this.getFileIcon(fileName);
+        
+        const tabsContainer = document.getElementById('fileTabs');
+        const tab = document.createElement('div');
+        tab.className = 'file-tab';
+        tab.dataset.file = path;
+        tab.innerHTML = `
+            <i class="${icon}"></i>
+            <span>${fileName}</span>
+            <button class="tab-close">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        tab.addEventListener('click', (e) => {
+            if (e.target.closest('.tab-close')) {
+                this.closeTab(path);
+            } else {
+                this.openFile(path);
+            }
+        });
+
+        tabsContainer.appendChild(tab);
+    }
+
+    closeTab(path) {
+        this.openTabs.delete(path);
+        const tab = document.querySelector(`[data-file="${path}"]`);
+        if (tab) tab.remove();
+
+        // Switch to another tab if current file is closed
+        if (this.currentFile === path) {
+            const remainingTabs = Array.from(this.openTabs.keys());
+            if (remainingTabs.length > 0) {
+                this.openFile(remainingTabs[0]);
+            } else {
+                this.editor.setValue('');
+                this.currentFile = null;
+            }
+        }
+    }
+
+    updateActiveTab(path) {
+        document.querySelectorAll('.file-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.file === path);
+        });
+    }
+
+    updateActiveFileInTree(path) {
+        document.querySelectorAll('.tree-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.path === path);
+        });
+    }
+
+    refreshFileTree() {
+        const fileTree = document.getElementById('fileTree');
+        fileTree.innerHTML = '';
+
+        // Sort files and folders
+        const items = Array.from(this.fileSystem.entries()).sort((a, b) => {
+            const [pathA, itemA] = a;
+            const [pathB, itemB] = b;
+            
+            // Folders first
+            if (itemA.type === 'folder' && itemB.type === 'file') return -1;
+            if (itemA.type === 'file' && itemB.type === 'folder') return 1;
+            
+            return pathA.localeCompare(pathB);
+        });
+
+        items.forEach(([path, item]) => {
+            const treeItem = this.createTreeItem(path, item);
+            fileTree.appendChild(treeItem);
+        });
+    }
+
+    createTreeItem(path, item) {
+        const div = document.createElement('div');
+        div.className = `tree-item ${item.type}`;
+        div.dataset.path = path;
+
+        const name = path.split('/').pop() || path;
+        const icon = item.type === 'folder' ? 'fas fa-folder folder-icon' : this.getFileIcon(name);
+
+        div.innerHTML = `
+            <i class="tree-icon ${icon}"></i>
+            <span>${name}</span>
+            <div class="tree-item-actions">
+                ${item.type === 'folder' ? '<button class="item-action" title="Add File"><i class="fas fa-plus"></i></button>' : ''}
+                <button class="item-action" title="Rename"><i class="fas fa-edit"></i></button>
+                <button class="item-action" title="Delete"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+
+        return div;
+    }
+
+    getFileIcon(fileName) {
+        const ext = fileName.split('.').pop().toLowerCase();
+        const iconMap = {
+            'java': 'fab fa-java file-icon',
+            'js': 'fab fa-js file-icon',
+            'ts': 'fab fa-js file-icon',
+            'py': 'fab fa-python file-icon',
+            'html': 'fab fa-html5 file-icon',
+            'css': 'fab fa-css3 file-icon',
+            'md': 'fab fa-markdown file-icon',
+            'json': 'fas fa-code file-icon',
+            'xml': 'fas fa-code file-icon'
+        };
+        return iconMap[ext] || 'fas fa-file file-icon';
+    }
+
+    getLanguageFromExtension(fileName) {
+        const ext = fileName.split('.').pop().toLowerCase();
+        const langMap = {
+            'java': 'java',
+            'js': 'javascript',
+            'ts': 'typescript',
+            'py': 'python',
+            'html': 'html',
+            'css': 'css',
+            'md': 'markdown',
+            'json': 'json',
+            'xml': 'xml'
+        };
+        return langMap[ext] || 'plaintext';
+    }
+
+    setEditorLanguage(language) {
+        const model = this.editor.getModel();
+        monaco.editor.setModelLanguage(model, language);
+    }
+
+    // AI Chat Methods
+    openAiChat() {
+        document.getElementById('aiChatModal').classList.add('active');
+    }
+
+    closeAiChat() {
+        document.getElementById('aiChatModal').classList.remove('active');
+    }
+
+    async sendAiMessage() {
+        const input = document.getElementById('aiInput');
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Add user message to chat
+        this.addAiMessage('user', message);
+        input.value = '';
+
+        // Show loading
+        const loadingId = this.addAiMessage('assistant', 'Thinking...', true);
+
+        try {
+            // Get current code context
+            const currentCode = this.editor.getValue();
+            const context = currentCode ? `Current code:\n\`\`\`${this.getCurrentLanguage()}\n${currentCode}\n\`\`\`` : '';
+            
+            const response = await this.callOpenAI(message, context);
+            
+            // Remove loading message and add response
+            this.removeAiMessage(loadingId);
+            this.addAiMessage('assistant', response);
+            
+        } catch (error) {
+            this.removeAiMessage(loadingId);
+            this.addAiMessage('assistant', `Sorry, I encountered an error: ${error.message}`);
+        }
+    }
+
+    async callOpenAI(message, context = '') {
+        const response = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                context: context,
+                sessionId: this.sessionId,
+                userId: this.currentUser.id
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.response;
+    }
+
+    addAiMessage(role, content, isLoading = false) {
+        const messagesContainer = document.getElementById('aiChatMessages');
+        const messageDiv = document.createElement('div');
+        const messageId = 'msg-' + Date.now();
+        
+        messageDiv.id = messageId;
+        messageDiv.className = `ai-message ${role} fade-in`;
+        
+        const icon = role === 'user' ? 'fas fa-user' : 'fas fa-robot';
+        const roleText = role === 'user' ? 'You' : 'AI Assistant';
+        
+        messageDiv.innerHTML = `
+            <div class="ai-message-header">
+                <i class="${icon}"></i>
+                <span class="ai-message-role ${role}">${roleText}</span>
+            </div>
+            <div class="ai-message-content">${isLoading ? this.getLoadingHTML() : this.formatAiContent(content)}</div>
+        `;
+        
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        return messageId;
+    }
+
+    removeAiMessage(messageId) {
+        const message = document.getElementById(messageId);
+        if (message) message.remove();
+    }
+
+    formatAiContent(content) {
+        // Basic markdown-like formatting
+        return content
+            .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
+
+    getLoadingHTML() {
+        return `
+            <div class="loading">
+                <div class="loading-dots">
+                    <div class="loading-dot"></div>
+                    <div class="loading-dot"></div>
+                    <div class="loading-dot"></div>
                 </div>
-                <p style="font-size: 14px; color: rgba(255, 255, 255, 0.7);">
-                    Select code and click any AI button to get started, or connect to a session to collaborate in real-time!
-                </p>
+                <span style="margin-left: 12px;">Thinking...</span>
             </div>
         `;
     }
 
+    getCurrentLanguage() {
+        if (!this.currentFile) return 'plaintext';
+        const file = this.fileSystem.get(this.currentFile);
+        return file ? file.language : 'plaintext';
+    }
+
+    // WebRTC Video/Audio Call Methods
+    setupWebRTC() {
+        // Initialize WebRTC capabilities
+        this.checkWebRTCSupport();
+    }
+
+    checkWebRTCSupport() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.warn('WebRTC not supported in this browser');
+            document.getElementById('videoCallBtn').disabled = true;
+            document.getElementById('audioCallBtn').disabled = true;
+        }
+    }
+
+    async startVideoCall() {
+        if (this.isInCall) {
+            this.showNotification('Already in a call', 'warning');
+            return;
+        }
+
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
+
+            this.isInCall = true;
+            this.showVideoCallModal();
+            this.setupLocalVideo();
+            this.updateCallButtons();
+            
+            // Notify other participants
+            if (this.socket) {
+                this.socket.emit('call-start', {
+                    sessionId: this.sessionId,
+                    userId: this.currentUser.id,
+                    type: 'video'
+                });
+            }
+
+        } catch (error) {
+            console.error('Error starting video call:', error);
+            this.showNotification('Failed to start video call', 'error');
+        }
+    }
+
+    async startAudioCall() {
+        if (this.isInCall) {
+            this.showNotification('Already in a call', 'warning');
+            return;
+        }
+
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({
+                video: false,
+                audio: true
+            });
+
+            this.isInCall = true;
+            this.showVideoCallModal();
+            this.updateCallButtons();
+            
+            // Notify other participants
+            if (this.socket) {
+                this.socket.emit('call-start', {
+                    sessionId: this.sessionId,
+                    userId: this.currentUser.id,
+                    type: 'audio'
+                });
+            }
+
+        } catch (error) {
+            console.error('Error starting audio call:', error);
+            this.showNotification('Failed to start audio call', 'error');
+        }
+    }
+
+    setupLocalVideo() {
+        const localVideo = document.getElementById('localVideo');
+        localVideo.srcObject = this.localStream;
+    }
+
+    showVideoCallModal() {
+        document.getElementById('videoCallModal').classList.add('active');
+    }
+
+    hideVideoCallModal() {
+        document.getElementById('videoCallModal').classList.remove('active');
+    }
+
+    endCall() {
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => track.stop());
+            this.localStream = null;
+        }
+
+        this.remoteStreams.forEach(stream => {
+            stream.getTracks().forEach(track => track.stop());
+        });
+        this.remoteStreams.clear();
+
+        this.isInCall = false;
+        this.hideVideoCallModal();
+        this.updateCallButtons();
+
+        // Notify other participants
+        if (this.socket) {
+            this.socket.emit('call-end', {
+                sessionId: this.sessionId,
+                userId: this.currentUser.id
+            });
+        }
+    }
+
+    toggleMicrophone() {
+        if (this.localStream) {
+            const audioTrack = this.localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                const btn = document.getElementById('toggleMic');
+                btn.classList.toggle('mute', !audioTrack.enabled);
+                btn.querySelector('i').className = audioTrack.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+            }
+        }
+    }
+
+    toggleCamera() {
+        if (this.localStream) {
+            const videoTrack = this.localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                const btn = document.getElementById('toggleCamera');
+                btn.classList.toggle('mute', !videoTrack.enabled);
+                btn.querySelector('i').className = videoTrack.enabled ? 'fas fa-video' : 'fas fa-video-slash';
+            }
+        }
+    }
+
+    async shareScreen() {
+        try {
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: true
+            });
+
+            // Replace video track with screen share
+            if (this.localStream) {
+                const videoTrack = screenStream.getVideoTracks()[0];
+                const sender = this.peer?.getSenders?.().find(s => 
+                    s.track && s.track.kind === 'video'
+                );
+                
+                if (sender) {
+                    await sender.replaceTrack(videoTrack);
+                }
+            }
+
+            this.showNotification('Screen sharing started', 'success');
+        } catch (error) {
+            console.error('Error sharing screen:', error);
+            this.showNotification('Failed to share screen', 'error');
+        }
+    }
+
+    updateCallButtons() {
+        const videoBtn = document.getElementById('videoCallBtn');
+        const audioBtn = document.getElementById('audioCallBtn');
+        
+        videoBtn.classList.toggle('active', this.isInCall);
+        audioBtn.classList.toggle('active', this.isInCall);
+    }
+
+    // Collaborator Management
+    openAddCollaboratorModal() {
+        document.getElementById('addCollaboratorModal').classList.add('active');
+    }
+
+    closeAddCollaboratorModal() {
+        document.getElementById('addCollaboratorModal').classList.remove('active');
+        document.getElementById('collaboratorId').value = '';
+        document.getElementById('permissionLevel').value = 'edit';
+    }
+
+    async addCollaborator() {
+        const collaboratorId = document.getElementById('collaboratorId').value.trim();
+        const permissionLevel = document.getElementById('permissionLevel').value;
+
+        if (!collaboratorId) {
+            this.showNotification('Please enter a collaborator ID', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/collaborators/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sessionId: this.sessionId,
+                    collaboratorId: collaboratorId,
+                    permissionLevel: permissionLevel
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showNotification(`Added collaborator: ${collaboratorId}`, 'success');
+                this.closeAddCollaboratorModal();
+                this.updateCollaboratorsList();
+            } else {
+                const error = await response.json();
+                this.showNotification(`Failed to add collaborator: ${error.message}`, 'error');
+            }
+        } catch (error) {
+            this.showNotification(`Error adding collaborator: ${error.message}`, 'error');
+        }
+    }
+
+    updateCollaboratorsList() {
+        // This would typically fetch the updated list from the server
+        // For now, we'll simulate adding a new collaborator
+        const collaboratorsList = document.getElementById('collaboratorsList');
+        // Implementation would update the collaborators list
+    }
+
+    // Connection and Communication Methods
     connect() {
         const sessionIdInput = document.getElementById('sessionId');
         this.sessionId = sessionIdInput.value.trim();
@@ -346,35 +828,53 @@ public class AdvancedJavaDemo {
         }
 
         try {
-            // Initialize Socket.IO connection (simulated for demo)
-            this.simulateConnection();
+            // Initialize Socket.IO connection
+            this.socket = io();
             
+            this.socket.on('connect', () => {
+                this.socket.emit('join-session', {
+                    sessionId: this.sessionId,
+                    userId: this.currentUser.id,
+                    username: this.currentUser.name
+                });
+            });
+
+            this.socket.on('session-joined', (data) => {
+                this.isConnected = true;
+                this.updateConnectionStatus(true, 'Connected');
+                this.showNotification(`Connected to session: ${this.sessionId}`, 'success');
+            });
+
+            this.socket.on('user-joined', (data) => {
+                this.addChatMessage('System', `${data.username} joined the session`, new Date(), false, 'system');
+            });
+
+            this.socket.on('user-left', (data) => {
+                this.addChatMessage('System', `${data.username} left the session`, new Date(), false, 'system');
+            });
+
+            this.socket.on('code-change', (data) => {
+                if (data.userId !== this.currentUser.id) {
+                    this.handleRemoteCodeChange(data);
+                }
+            });
+
+            this.socket.on('chat-message', (data) => {
+                if (data.userId !== this.currentUser.id) {
+                    this.addChatMessage(data.username, data.message, new Date(data.timestamp), false);
+                }
+            });
+
+            this.socket.on('disconnect', () => {
+                this.isConnected = false;
+                this.updateConnectionStatus(false, 'Disconnected');
+                this.showNotification('Disconnected from session', 'warning');
+            });
+
         } catch (error) {
             console.error('Connection error:', error);
             this.showNotification('Failed to connect to session', 'error');
         }
-    }
-
-    simulateConnection() {
-        // Simulate connection process
-        this.updateConnectionStatus(true, 'Connecting...');
-        
-        setTimeout(() => {
-            this.isConnected = true;
-            this.updateConnectionStatus(true, 'Connected');
-            this.showNotification(`Connected to session: ${this.sessionId}`, 'success');
-            
-            // Simulate receiving a welcome message
-            setTimeout(() => {
-                this.addChatMessage('System', `Welcome to session ${this.sessionId}! You can now collaborate in real-time.`, new Date(), false, 'system');
-            }, 1000);
-            
-            // Simulate other users joining
-            setTimeout(() => {
-                this.addChatMessage('Alice Johnson', 'Hey! Great to see you in the session. Ready to code together?', new Date(), false);
-            }, 3000);
-            
-        }, 2000);
     }
 
     disconnect() {
@@ -401,18 +901,40 @@ public class AdvancedJavaDemo {
     }
 
     sendCodeChange() {
-        if (!this.isConnected) return;
+        if (!this.isConnected || !this.socket) return;
         
-        // Simulate sending code changes
-        const content = this.editor.getValue();
-        console.log('Sending code change:', content.length, 'characters');
+        this.socket.emit('code-change', {
+            sessionId: this.sessionId,
+            userId: this.currentUser.id,
+            filename: this.currentFile,
+            content: this.editor.getValue(),
+            timestamp: Date.now()
+        });
     }
 
     sendCursorPosition(position) {
-        if (!this.isConnected) return;
+        if (!this.isConnected || !this.socket) return;
         
-        // Simulate sending cursor position
-        console.log('Cursor position:', position.lineNumber, position.column);
+        this.socket.emit('cursor-position', {
+            sessionId: this.sessionId,
+            userId: this.currentUser.id,
+            position: position,
+            timestamp: Date.now()
+        });
+    }
+
+    handleRemoteCodeChange(data) {
+        if (data.filename === this.currentFile) {
+            const currentPosition = this.editor.getPosition();
+            this.editor.setValue(data.content);
+            this.editor.setPosition(currentPosition);
+        }
+        
+        // Update file system
+        if (this.fileSystem.has(data.filename)) {
+            const file = this.fileSystem.get(data.filename);
+            file.content = data.content;
+        }
     }
 
     sendMessage() {
@@ -425,25 +947,15 @@ public class AdvancedJavaDemo {
         this.addChatMessage(this.currentUser.name, content, new Date(), true);
         messageInput.value = '';
         
-        // Simulate sending message
-        if (this.isConnected) {
-            console.log('Sending chat message:', content);
-            
-            // Simulate response from other users
-            setTimeout(() => {
-                const responses = [
-                    "That's a great point!",
-                    "I agree with that approach.",
-                    "Let me check that implementation.",
-                    "Good catch! Thanks for pointing that out.",
-                    "I'll work on that part next."
-                ];
-                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                const users = ['Alice Johnson', 'Bob Smith', 'Charlie Brown'];
-                const randomUser = users[Math.floor(Math.random() * users.length)];
-                
-                this.addChatMessage(randomUser, randomResponse, new Date(), false);
-            }, 1000 + Math.random() * 3000);
+        // Send message via socket
+        if (this.isConnected && this.socket) {
+            this.socket.emit('chat-message', {
+                sessionId: this.sessionId,
+                userId: this.currentUser.id,
+                username: this.currentUser.name,
+                message: content,
+                timestamp: Date.now()
+            });
         }
     }
 
@@ -475,359 +987,29 @@ public class AdvancedJavaDemo {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    async explainCode() {
-        const selectedText = this.getSelectedCode();
-        const code = selectedText || this.editor.getValue();
-        
-        if (!code.trim()) {
-            this.showNotification('Please select code to explain or ensure the editor has content', 'warning');
-            return;
-        }
-
-        this.showAiPanel();
-        this.setAiLoading(true, 'Analyzing your code...');
-        
-        try {
-            // Simulate AI response
-            await this.simulateAiResponse('explain', code);
-        } catch (error) {
-            this.displayAiResponse('Error: ' + error.message);
-        } finally {
-            this.setAiLoading(false);
-        }
-    }
-
-    async fixCode() {
-        const selectedText = this.getSelectedCode();
-        const code = selectedText || this.editor.getValue();
-        
-        if (!code.trim()) {
-            this.showNotification('Please select code to fix or ensure the editor has content', 'warning');
-            return;
-        }
-
-        this.showAiPanel();
-        this.setAiLoading(true, 'Scanning for bugs and issues...');
-        
-        try {
-            await this.simulateAiResponse('fix', code);
-        } catch (error) {
-            this.displayAiResponse('Error: ' + error.message);
-        } finally {
-            this.setAiLoading(false);
-        }
-    }
-
-    async addComments() {
-        const selectedText = this.getSelectedCode();
-        const code = selectedText || this.editor.getValue();
-        
-        if (!code.trim()) {
-            this.showNotification('Please select code to comment or ensure the editor has content', 'warning');
-            return;
-        }
-
-        this.showAiPanel();
-        this.setAiLoading(true, 'Generating meaningful comments...');
-        
-        try {
-            await this.simulateAiResponse('comment', code);
-        } catch (error) {
-            this.displayAiResponse('Error: ' + error.message);
-        } finally {
-            this.setAiLoading(false);
-        }
-    }
-
-    async optimizeCode() {
-        const selectedText = this.getSelectedCode();
-        const code = selectedText || this.editor.getValue();
-        
-        if (!code.trim()) {
-            this.showNotification('Please select code to optimize or ensure the editor has content', 'warning');
-            return;
-        }
-
-        this.showAiPanel();
-        this.setAiLoading(true, 'Optimizing for performance and readability...');
-        
-        try {
-            await this.simulateAiResponse('optimize', code);
-        } catch (error) {
-            this.displayAiResponse('Error: ' + error.message);
-        } finally {
-            this.setAiLoading(false);
-        }
-    }
-
-    async reviewCode() {
-        const selectedText = this.getSelectedCode();
-        const code = selectedText || this.editor.getValue();
-        
-        if (!code.trim()) {
-            this.showNotification('Please select code to review or ensure the editor has content', 'warning');
-            return;
-        }
-
-        this.showAiPanel();
-        this.setAiLoading(true, 'Conducting comprehensive code review...');
-        
-        try {
-            await this.simulateAiResponse('review', code);
-        } catch (error) {
-            this.displayAiResponse('Error: ' + error.message);
-        } finally {
-            this.setAiLoading(false);
-        }
-    }
-
-    async simulateAiResponse(action, code) {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                let response = '';
-                let suggestedCode = '';
-                
-                switch (action) {
-                    case 'explain':
-                        response = `This Java code demonstrates advanced programming patterns including:
-
-• **Stream Processing**: Uses Java 8+ streams for efficient data processing and filtering
-• **Functional Programming**: Leverages lambda expressions and method references
-• **Concurrent Collections**: Implements thread-safe data structures with ConcurrentHashMap
-• **Optional Handling**: Proper null-safety with Optional pattern
-• **Exception Management**: Structured error handling with custom exceptions
-• **Modern Java Features**: Utilizes records, enhanced switch expressions, and pattern matching
-
-The code follows SOLID principles and demonstrates clean architecture with separation of concerns. The TaskProcessor class handles business logic while maintaining single responsibility.`;
-                        break;
-                        
-                    case 'fix':
-                        response = `I've identified several potential improvements and fixes:
-
-✅ **Thread Safety**: The code properly uses ConcurrentHashMap for thread-safe operations
-✅ **Null Safety**: Good use of Optional to prevent NullPointerException
-✅ **Resource Management**: Proper exception handling in place
-
-**Potential Enhancements:**
-• Consider adding input validation for constructor parameters
-• The random failure simulation in TaskProcessor could be configurable
-• Add logging for better debugging and monitoring`;
-                        
-                        suggestedCode = `// Enhanced constructor with validation
-public AdvancedJavaDemo() {
-    this.tasksByCategory = new ConcurrentHashMap<>();
-    this.processor = new TaskProcessor();
-    
-    // Add validation
-    Objects.requireNonNull(processor, "TaskProcessor cannot be null");
-}`;
-                        break;
-                        
-                    case 'comment':
-                        response = `I've analyzed your code and can add comprehensive documentation:`;
-                        
-                        suggestedCode = `/**
- * Processes a collection of tasks using modern Java streaming API
- * Groups tasks by category and priority, then processes them in order
- * 
- * @param tasks List of tasks to process (must not be null)
- * @throws IllegalArgumentException if tasks list is null
- * @since 1.0
- */
-public void processTasks(List<Task> tasks) {
-    // Validate input parameters
-    Objects.requireNonNull(tasks, "Tasks list cannot be null");
-    
-    // Group tasks by category and priority using collectors
-    Map<String, Map<Priority, List<Task>>> groupedTasks = tasks.stream()
-        .filter(Task::isActive) // Only process active tasks
-        .collect(Collectors.groupingBy(
-            Task::getCategory,
-            Collectors.groupingBy(Task::getPriority)
-        ));
-    
-    // Process tasks in priority order (highest first)
-    groupedTasks.forEach((category, priorityMap) -> {
-        priorityMap.entrySet().stream()
-            .sorted(Map.Entry.<Priority, List<Task>>comparingByKey().reversed())
-            .forEach(entry -> {
-                System.out.printf("Processing %d %s tasks in category: %s%n", 
-                    entry.getValue().size(), entry.getKey(), category);
-                
-                // Use parallel processing for better performance
-                entry.getValue().parallelStream()
-                    .forEach(processor::execute);
-            });
-    });
-}`;
-                        break;
-                        
-                    case 'optimize':
-                        response = `Here are several optimization opportunities I've identified:
-
-🚀 **Performance Improvements:**
-• Use parallel streams for large datasets
-• Implement caching for frequently accessed results
-• Consider using CompletableFuture for async processing
-• Add connection pooling for external resources
-
-📊 **Memory Optimization:**
-• Use primitive collections where appropriate
-• Implement object pooling for frequently created objects
-• Consider lazy initialization for expensive resources`;
-                        
-                        suggestedCode = `// Optimized version with caching and async processing
-private final Map<String, TaskResult> resultCache = new ConcurrentHashMap<>();
-
-public CompletableFuture<Optional<TaskResult>> findBestResultAsync(String category) {
-    return CompletableFuture.supplyAsync(() -> {
-        // Check cache first
-        TaskResult cached = resultCache.get(category);
-        if (cached != null && !isExpired(cached)) {
-            return Optional.of(cached);
-        }
-        
-        // Process and cache result
-        Optional<TaskResult> result = Optional.ofNullable(tasksByCategory.get(category))
-            .orElse(Collections.emptyList())
-            .parallelStream() // Use parallel processing
-            .map(this::processTask)
-            .filter(Objects::nonNull)
-            .max(Comparator.comparing(TaskResult::getScore));
-            
-        result.ifPresent(r -> resultCache.put(category, r));
-        return result;
-    });
-}`;
-                        break;
-                        
-                    case 'review':
-                        response = `## Code Review Summary
-
-### ✅ Strengths
-• **Modern Java Usage**: Excellent use of Java 8+ features
-• **Clean Architecture**: Well-structured with clear separation of concerns
-• **Thread Safety**: Proper use of concurrent collections
-• **Error Handling**: Good exception management patterns
-• **Functional Style**: Effective use of streams and lambdas
-
-### 🔍 Areas for Improvement
-• **Documentation**: Could benefit from more comprehensive JavaDoc
-• **Testing**: Consider adding unit tests for critical methods
-• **Configuration**: Make failure rates and timeouts configurable
-• **Monitoring**: Add metrics and logging for production use
-
-### 📈 Recommendations
-1. Add comprehensive unit tests with JUnit 5
-2. Implement proper logging with SLF4J
-3. Consider using Spring Boot for dependency injection
-4. Add metrics collection with Micrometer
-5. Implement circuit breaker pattern for external calls
-
-**Overall Rating: 8.5/10** - Well-written code with modern Java practices!`;
-                        break;
-                }
-                
-                this.displayAiResponse(response, suggestedCode);
-                resolve();
-            }, 2000 + Math.random() * 2000);
-        });
-    }
-
-    getSelectedCode() {
-        if (!this.editor) return '';
-        const selection = this.editor.getSelection();
-        return this.editor.getModel().getValueInRange(selection);
-    }
-
-    showAiPanel() {
-        document.getElementById('aiPanel').classList.add('visible');
-    }
-
-    closeAiPanel() {
-        document.getElementById('aiPanel').classList.remove('visible');
-    }
-
-    setAiLoading(loading, message = 'AI is thinking...') {
-        const aiResponse = document.getElementById('aiResponse');
-        if (loading) {
-            aiResponse.innerHTML = `
-                <div class="loading" style="display: flex; align-items: center; justify-content: center; padding: 40px;">
-                    <div class="loading-dots">
-                        <div class="loading-dot"></div>
-                        <div class="loading-dot"></div>
-                        <div class="loading-dot"></div>
-                    </div>
-                    <span style="margin-left: 12px;">${message}</span>
-                </div>
-            `;
-        }
-    }
-
-    displayAiResponse(response, suggestedCode) {
-        document.getElementById('aiResponse').innerHTML = response.replace(/\n/g, '<br>');
-        
-        const aiCodeSection = document.getElementById('aiCodeSection');
-        if (suggestedCode) {
-            document.getElementById('aiCodeContent').textContent = suggestedCode;
-            aiCodeSection.classList.remove('hidden');
-        } else {
-            aiCodeSection.classList.add('hidden');
-        }
-    }
-
-    applyAiCode() {
-        const suggestedCode = document.getElementById('aiCodeContent').textContent;
-        if (suggestedCode && this.editor) {
-            const selection = this.editor.getSelection();
-            if (selection && !selection.isEmpty()) {
-                this.editor.executeEdits('ai-suggestion', [{
-                    range: selection,
-                    text: suggestedCode
-                }]);
-            } else {
-                // Insert at cursor position
-                const position = this.editor.getPosition();
-                this.editor.executeEdits('ai-suggestion', [{
-                    range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
-                    text: '\n' + suggestedCode + '\n'
-                }]);
+    // Utility Methods
+    handleKeyboardShortcuts(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key) {
+                case 's':
+                    e.preventDefault();
+                    this.saveSession();
+                    break;
+                case 'n':
+                    e.preventDefault();
+                    this.createNewFile();
+                    break;
+                case 'o':
+                    e.preventDefault();
+                    // Open file dialog would go here
+                    break;
             }
-            this.showNotification('Code applied successfully!', 'success');
         }
-    }
-
-    addFile() {
-        const filename = prompt('Enter filename (e.g., Utils.java, README.md):');
-        if (filename && filename.trim()) {
-            this.showNotification(`File "${filename}" would be created in a real implementation`, 'info');
-            // In a real implementation, this would create a new file and tab
-        }
-    }
-
-    switchFile(fileItem) {
-        // Remove active class from all file items
-        document.querySelectorAll('.file-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Add active class to clicked item
-        fileItem.classList.add('active');
-        
-        // Update file tab
-        const filename = fileItem.querySelector('span').textContent;
-        document.querySelector('.file-tab span').textContent = filename;
-        
-        // In a real implementation, this would load the file content
-        this.showNotification(`Switched to ${filename}`, 'info');
     }
 
     saveSession() {
-        if (this.sessionId) {
-            this.showNotification('Session saved successfully!', 'success');
-        } else {
-            this.showNotification('Please connect to a session first', 'warning');
-        }
+        this.saveFileContent();
+        this.showNotification('Session saved successfully!', 'success');
     }
 
     async exportToGitHub() {
@@ -836,16 +1018,39 @@ public CompletableFuture<Optional<TaskResult>> findBestResultAsync(String catego
             return;
         }
 
-        // Simulate GitHub export
-        this.showNotification('Preparing export to GitHub...', 'info');
-        
-        setTimeout(() => {
-            const repoUrl = `https://github.com/user/codebuddy-session-${this.sessionId}`;
-            this.showNotification(`Successfully exported to GitHub: ${repoUrl}`, 'success');
-            
-            // In a real implementation, this would open the GitHub repo
-            console.log('Would open:', repoUrl);
-        }, 2000);
+        const repoName = prompt('Enter GitHub repository name:');
+        if (!repoName) return;
+
+        const accessToken = prompt('Enter your GitHub access token:');
+        if (!accessToken) return;
+
+        try {
+            const response = await fetch('/api/github/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sessionId: this.sessionId,
+                    repoName: repoName,
+                    accessToken: accessToken,
+                    files: Object.fromEntries(
+                        Array.from(this.fileSystem.entries())
+                            .filter(([path, item]) => item.type === 'file')
+                            .map(([path, item]) => [path, item.content])
+                    )
+                })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                this.showNotification(`Successfully exported to GitHub: ${result.url}`, 'success');
+            } else {
+                this.showNotification(`Export failed: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            this.showNotification(`Export failed: ${error.message}`, 'error');
+        }
     }
 
     showNotification(message, type = 'info') {
@@ -890,7 +1095,9 @@ public CompletableFuture<Optional<TaskResult>> findBestResultAsync(String catego
         setTimeout(() => {
             notification.style.transform = 'translateX(100%)';
             setTimeout(() => {
-                document.body.removeChild(notification);
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
             }, 300);
         }, 4000);
     }
