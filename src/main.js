@@ -25,11 +25,13 @@ class CodeBuddyApp {
     }
 
     async init() {
+        console.log('Initializing CodeBuddy.ai...');
         await this.initializeEditor();
         this.setupEventListeners();
         this.initializeFileSystem();
         this.loadSampleCode();
         this.setupWebRTC();
+        console.log('CodeBuddy.ai initialized successfully!');
     }
 
     async initializeEditor() {
@@ -79,94 +81,233 @@ class CodeBuddyApp {
                     }
                 });
 
+                console.log('Monaco Editor initialized');
                 resolve();
             });
         });
     }
 
     setupEventListeners() {
+        console.log('Setting up event listeners...');
+        
         // Connection controls
-        document.getElementById('connectBtn').addEventListener('click', () => this.connect());
-        document.getElementById('disconnectBtn').addEventListener('click', () => this.disconnect());
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        
+        if (connectBtn) {
+            connectBtn.addEventListener('click', () => {
+                console.log('Connect button clicked');
+                this.connect();
+            });
+        }
+        
+        if (disconnectBtn) {
+            disconnectBtn.addEventListener('click', () => {
+                console.log('Disconnect button clicked');
+                this.disconnect();
+            });
+        }
 
         // AI Chat
-        document.getElementById('aiChatBtn').addEventListener('click', () => this.openAiChat());
-        document.getElementById('closeAiChat').addEventListener('click', () => this.closeAiChat());
-        document.getElementById('sendAiMessage').addEventListener('click', () => this.sendAiMessage());
-        document.getElementById('aiInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendAiMessage();
-            }
-        });
+        const aiChatBtn = document.getElementById('aiChatBtn');
+        const closeAiChat = document.getElementById('closeAiChat');
+        const sendAiMessage = document.getElementById('sendAiMessage');
+        const aiInput = document.getElementById('aiInput');
+        
+        if (aiChatBtn) {
+            aiChatBtn.addEventListener('click', () => {
+                console.log('AI Chat button clicked');
+                this.openAiChat();
+            });
+        }
+        
+        if (closeAiChat) {
+            closeAiChat.addEventListener('click', () => this.closeAiChat());
+        }
+        
+        if (sendAiMessage) {
+            sendAiMessage.addEventListener('click', () => this.sendAiMessage());
+        }
+        
+        if (aiInput) {
+            aiInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendAiMessage();
+                }
+            });
+        }
 
         // Console controls
-        document.getElementById('consoleBtn').addEventListener('click', () => this.toggleConsole());
-        document.getElementById('closeConsole').addEventListener('click', () => this.hideConsole());
-        document.getElementById('clearConsole').addEventListener('click', () => this.clearConsole());
-        document.getElementById('runCodeBtn').addEventListener('click', () => this.runCode());
+        const consoleBtn = document.getElementById('consoleBtn');
+        const closeConsole = document.getElementById('closeConsole');
+        const clearConsole = document.getElementById('clearConsole');
+        const runCodeBtn = document.getElementById('runCodeBtn');
+        
+        if (consoleBtn) {
+            consoleBtn.addEventListener('click', () => {
+                console.log('Console button clicked');
+                this.toggleConsole();
+            });
+        }
+        
+        if (closeConsole) {
+            closeConsole.addEventListener('click', () => this.hideConsole());
+        }
+        
+        if (clearConsole) {
+            clearConsole.addEventListener('click', () => this.clearConsole());
+        }
+        
+        if (runCodeBtn) {
+            runCodeBtn.addEventListener('click', () => {
+                console.log('Run Code button clicked');
+                this.runCode();
+            });
+        }
 
         // File Explorer
-        document.getElementById('newFileBtn').addEventListener('click', () => this.createNewFile());
-        document.getElementById('newFolderBtn').addEventListener('click', () => this.createNewFolder());
-        document.getElementById('refreshBtn').addEventListener('click', () => this.refreshFileTree());
+        const newFileBtn = document.getElementById('newFileBtn');
+        const newFolderBtn = document.getElementById('newFolderBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        
+        if (newFileBtn) {
+            newFileBtn.addEventListener('click', () => {
+                console.log('New File button clicked');
+                this.createNewFile();
+            });
+        }
+        
+        if (newFolderBtn) {
+            newFolderBtn.addEventListener('click', () => {
+                console.log('New Folder button clicked');
+                this.createNewFolder();
+            });
+        }
+        
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                console.log('Refresh button clicked');
+                this.refreshFileTree();
+            });
+        }
 
         // Chat controls
-        document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
-        document.getElementById('messageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
+        const sendBtn = document.getElementById('sendBtn');
+        const messageInput = document.getElementById('messageInput');
+        
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => {
+                console.log('Send message button clicked');
                 this.sendMessage();
-            }
-        });
+            });
+        }
+        
+        if (messageInput) {
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+        }
 
         // Video/Audio call controls
-        document.getElementById('videoCallBtn').addEventListener('click', () => this.startVideoCall());
-        document.getElementById('audioCallBtn').addEventListener('click', () => this.startAudioCall());
+        const videoCallBtn = document.getElementById('videoCallBtn');
+        const audioCallBtn = document.getElementById('audioCallBtn');
+        
+        if (videoCallBtn) {
+            videoCallBtn.addEventListener('click', () => {
+                console.log('Video call button clicked');
+                this.startVideoCall();
+            });
+        }
+        
+        if (audioCallBtn) {
+            audioCallBtn.addEventListener('click', () => {
+                console.log('Audio call button clicked');
+                this.startAudioCall();
+            });
+        }
 
         // Collaborator management
-        document.getElementById('addCollaboratorBtn').addEventListener('click', () => this.openAddCollaboratorModal());
-        document.getElementById('cancelAddCollaborator').addEventListener('click', () => this.closeAddCollaboratorModal());
-        document.getElementById('confirmAddCollaborator').addEventListener('click', () => this.addCollaborator());
+        const addCollaboratorBtn = document.getElementById('addCollaboratorBtn');
+        const cancelAddCollaborator = document.getElementById('cancelAddCollaborator');
+        const confirmAddCollaborator = document.getElementById('confirmAddCollaborator');
+        
+        if (addCollaboratorBtn) {
+            addCollaboratorBtn.addEventListener('click', () => {
+                console.log('Add collaborator button clicked');
+                this.openAddCollaboratorModal();
+            });
+        }
+        
+        if (cancelAddCollaborator) {
+            cancelAddCollaborator.addEventListener('click', () => this.closeAddCollaboratorModal());
+        }
+        
+        if (confirmAddCollaborator) {
+            confirmAddCollaborator.addEventListener('click', () => this.addCollaborator());
+        }
 
         // File tree interactions
         this.setupFileTreeListeners();
 
         // GitHub export
-        document.getElementById('githubExport').addEventListener('click', () => this.exportToGitHub());
+        const githubExport = document.getElementById('githubExport');
+        if (githubExport) {
+            githubExport.addEventListener('click', () => {
+                console.log('GitHub export button clicked');
+                this.exportToGitHub();
+            });
+        }
 
         // Save functionality
-        document.getElementById('saveBtn').addEventListener('click', () => this.saveSession());
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                console.log('Save button clicked');
+                this.saveSession();
+            });
+        }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+        
+        console.log('Event listeners set up successfully');
     }
 
     setupFileTreeListeners() {
         const fileTree = document.getElementById('fileTree');
         
-        fileTree.addEventListener('click', (e) => {
-            const treeItem = e.target.closest('.tree-item');
-            if (!treeItem) return;
+        if (fileTree) {
+            fileTree.addEventListener('click', (e) => {
+                const treeItem = e.target.closest('.tree-item');
+                if (!treeItem) return;
 
-            const action = e.target.closest('.item-action');
-            if (action) {
-                e.stopPropagation();
-                this.handleFileAction(action, treeItem);
-                return;
-            }
+                const action = e.target.closest('.item-action');
+                if (action) {
+                    e.stopPropagation();
+                    this.handleFileAction(action, treeItem);
+                    return;
+                }
 
-            if (treeItem.classList.contains('file')) {
-                this.openFile(treeItem.dataset.path);
-            } else if (treeItem.classList.contains('folder')) {
-                this.toggleFolder(treeItem);
-            }
-        });
+                if (treeItem.classList.contains('file')) {
+                    console.log('File clicked:', treeItem.dataset.path);
+                    this.openFile(treeItem.dataset.path);
+                } else if (treeItem.classList.contains('folder')) {
+                    console.log('Folder clicked:', treeItem.dataset.path);
+                    this.toggleFolder(treeItem);
+                }
+            });
+        }
     }
 
     handleFileAction(actionBtn, treeItem) {
         const action = actionBtn.title.toLowerCase();
         const path = treeItem.dataset.path;
+
+        console.log('File action:', action, 'on', path);
 
         switch (action) {
             case 'add file':
@@ -186,6 +327,7 @@ class CodeBuddyApp {
         this.fileSystem.set('src/Main.java', { type: 'file', content: '', language: 'java' });
         this.fileSystem.set('src/Utils.java', { type: 'file', content: '', language: 'java' });
         this.fileSystem.set('README.md', { type: 'file', content: '', language: 'markdown' });
+        console.log('File system initialized');
     }
 
     loadSampleCode() {
@@ -226,6 +368,8 @@ public class HelloWorld {
         if (this.editor) {
             this.editor.setValue(sampleCode);
         }
+        
+        console.log('Sample code loaded');
     }
 
     // Console Methods
@@ -233,34 +377,48 @@ public class HelloWorld {
         this.consoleVisible = !this.consoleVisible;
         const consolePanel = document.getElementById('consolePanel');
         
-        if (this.consoleVisible) {
-            consolePanel.classList.add('active');
-            this.addConsoleOutput('Console opened. Ready to execute code.', 'info');
-        } else {
-            consolePanel.classList.remove('active');
+        if (consolePanel) {
+            if (this.consoleVisible) {
+                consolePanel.classList.add('active');
+                this.addConsoleOutput('Console opened. Ready to execute code.', 'info');
+            } else {
+                consolePanel.classList.remove('active');
+            }
         }
+        
+        console.log('Console toggled:', this.consoleVisible);
     }
 
     hideConsole() {
         this.consoleVisible = false;
-        document.getElementById('consolePanel').classList.remove('active');
+        const consolePanel = document.getElementById('consolePanel');
+        if (consolePanel) {
+            consolePanel.classList.remove('active');
+        }
     }
 
     clearConsole() {
-        document.getElementById('consoleOutput').innerHTML = '';
-        this.addConsoleOutput('Console cleared.', 'info');
+        const consoleOutput = document.getElementById('consoleOutput');
+        if (consoleOutput) {
+            consoleOutput.innerHTML = '';
+            this.addConsoleOutput('Console cleared.', 'info');
+        }
     }
 
     addConsoleOutput(text, type = 'info') {
         const consoleOutput = document.getElementById('consoleOutput');
-        const outputLine = document.createElement('div');
-        outputLine.className = `output-line ${type}`;
-        outputLine.textContent = text;
-        consoleOutput.appendChild(outputLine);
-        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        if (consoleOutput) {
+            const outputLine = document.createElement('div');
+            outputLine.className = `output-line ${type}`;
+            outputLine.textContent = text;
+            consoleOutput.appendChild(outputLine);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
     }
 
     async runCode() {
+        console.log('Running code...');
+        
         if (!this.currentFile) {
             this.showNotification('No file selected to run', 'warning');
             return;
@@ -382,6 +540,8 @@ public class HelloWorld {
     }
 
     openFile(path) {
+        console.log('Opening file:', path);
+        
         const file = this.fileSystem.get(path);
         if (!file || file.type !== 'file') return;
 
@@ -411,6 +571,8 @@ public class HelloWorld {
         const icon = this.getFileIcon(fileName);
         
         const tabsContainer = document.getElementById('fileTabs');
+        if (!tabsContainer) return;
+        
         const tab = document.createElement('div');
         tab.className = 'file-tab';
         tab.dataset.file = path;
@@ -464,6 +626,8 @@ public class HelloWorld {
 
     refreshFileTree() {
         const fileTree = document.getElementById('fileTree');
+        if (!fileTree) return;
+        
         fileTree.innerHTML = '';
 
         // Sort files and folders
@@ -548,17 +712,28 @@ public class HelloWorld {
 
     // AI Chat Methods
     openAiChat() {
-        document.getElementById('aiChatModal').classList.add('active');
+        console.log('Opening AI Chat');
+        const modal = document.getElementById('aiChatModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
     }
 
     closeAiChat() {
-        document.getElementById('aiChatModal').classList.remove('active');
+        const modal = document.getElementById('aiChatModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
     }
 
     async sendAiMessage() {
         const input = document.getElementById('aiInput');
+        if (!input) return;
+        
         const message = input.value.trim();
         if (!message) return;
+
+        console.log('Sending AI message:', message);
 
         // Add user message to chat
         this.addAiMessage('user', message);
@@ -608,6 +783,8 @@ public class HelloWorld {
 
     addAiMessage(role, content, isLoading = false) {
         const messagesContainer = document.getElementById('aiChatMessages');
+        if (!messagesContainer) return;
+        
         const messageDiv = document.createElement('div');
         const messageId = 'msg-' + Date.now();
         
@@ -674,8 +851,10 @@ public class HelloWorld {
     checkWebRTCSupport() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             console.warn('WebRTC not supported in this browser');
-            document.getElementById('videoCallBtn').disabled = true;
-            document.getElementById('audioCallBtn').disabled = true;
+            const videoBtn = document.getElementById('videoCallBtn');
+            const audioBtn = document.getElementById('audioCallBtn');
+            if (videoBtn) videoBtn.disabled = true;
+            if (audioBtn) audioBtn.disabled = true;
         }
     }
 
@@ -745,24 +924,39 @@ public class HelloWorld {
         const videoBtn = document.getElementById('videoCallBtn');
         const audioBtn = document.getElementById('audioCallBtn');
         
-        videoBtn.classList.toggle('active', this.isInCall);
-        audioBtn.classList.toggle('active', this.isInCall);
+        if (videoBtn) videoBtn.classList.toggle('active', this.isInCall);
+        if (audioBtn) audioBtn.classList.toggle('active', this.isInCall);
     }
 
     // Collaborator Management
     openAddCollaboratorModal() {
-        document.getElementById('addCollaboratorModal').classList.add('active');
+        const modal = document.getElementById('addCollaboratorModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
     }
 
     closeAddCollaboratorModal() {
-        document.getElementById('addCollaboratorModal').classList.remove('active');
-        document.getElementById('collaboratorId').value = '';
-        document.getElementById('permissionLevel').value = 'edit';
+        const modal = document.getElementById('addCollaboratorModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        
+        const collaboratorId = document.getElementById('collaboratorId');
+        const permissionLevel = document.getElementById('permissionLevel');
+        
+        if (collaboratorId) collaboratorId.value = '';
+        if (permissionLevel) permissionLevel.value = 'edit';
     }
 
     async addCollaborator() {
-        const collaboratorId = document.getElementById('collaboratorId').value.trim();
-        const permissionLevel = document.getElementById('permissionLevel').value;
+        const collaboratorIdInput = document.getElementById('collaboratorId');
+        const permissionLevelInput = document.getElementById('permissionLevel');
+        
+        if (!collaboratorIdInput || !permissionLevelInput) return;
+        
+        const collaboratorId = collaboratorIdInput.value.trim();
+        const permissionLevel = permissionLevelInput.value;
 
         if (!collaboratorId) {
             this.showNotification('Please enter a collaborator ID', 'warning');
@@ -806,6 +1000,8 @@ public class HelloWorld {
     // Connection and Communication Methods
     connect() {
         const sessionIdInput = document.getElementById('sessionId');
+        if (!sessionIdInput) return;
+        
         this.sessionId = sessionIdInput.value.trim();
         
         if (!this.sessionId) {
@@ -813,11 +1009,14 @@ public class HelloWorld {
             return;
         }
 
+        console.log('Connecting to session:', this.sessionId);
+
         try {
             // Initialize Socket.IO connection
             this.socket = io();
             
             this.socket.on('connect', () => {
+                console.log('Socket connected');
                 this.socket.emit('join-session', {
                     sessionId: this.sessionId,
                     userId: this.currentUser.id,
@@ -826,6 +1025,7 @@ public class HelloWorld {
             });
 
             this.socket.on('session-joined', (data) => {
+                console.log('Session joined:', data);
                 this.isConnected = true;
                 this.updateConnectionStatus(true, 'Connected');
                 this.showNotification(`Connected to session: ${this.sessionId}`, 'success');
@@ -852,6 +1052,7 @@ public class HelloWorld {
             });
 
             this.socket.on('disconnect', () => {
+                console.log('Socket disconnected');
                 this.isConnected = false;
                 this.updateConnectionStatus(false, 'Disconnected');
                 this.showNotification('Disconnected from session', 'warning');
@@ -878,12 +1079,21 @@ public class HelloWorld {
         const statusElement = document.getElementById('connectionStatus');
         const statusTextElement = document.getElementById('statusText');
         
-        statusElement.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
-        statusTextElement.textContent = statusText;
+        if (statusElement) {
+            statusElement.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
+        }
         
-        document.getElementById('connectBtn').disabled = connected;
-        document.getElementById('disconnectBtn').disabled = !connected;
-        document.getElementById('sessionId').disabled = connected;
+        if (statusTextElement) {
+            statusTextElement.textContent = statusText;
+        }
+        
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sessionIdInput = document.getElementById('sessionId');
+        
+        if (connectBtn) connectBtn.disabled = connected;
+        if (disconnectBtn) disconnectBtn.disabled = !connected;
+        if (sessionIdInput) sessionIdInput.disabled = connected;
     }
 
     sendCodeChange() {
@@ -925,9 +1135,13 @@ public class HelloWorld {
 
     sendMessage() {
         const messageInput = document.getElementById('messageInput');
+        if (!messageInput) return;
+        
         const content = messageInput.value.trim();
         
         if (!content) return;
+        
+        console.log('Sending message:', content);
         
         // Add message to local chat
         this.addChatMessage(this.currentUser.name, content, new Date(), true);
@@ -947,6 +1161,8 @@ public class HelloWorld {
 
     addChatMessage(username, content, timestamp, isOwn, type = 'user') {
         const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = `message fade-in ${isOwn ? 'own' : ''}`;
         
@@ -1044,6 +1260,8 @@ public class HelloWorld {
     }
 
     showNotification(message, type = 'info') {
+        console.log('Notification:', type, message);
+        
         // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
@@ -1095,5 +1313,6 @@ public class HelloWorld {
 
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing CodeBuddy.ai...');
     new CodeBuddyApp();
 });
