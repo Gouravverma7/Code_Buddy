@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeBuddy.ai - VS Code Style Collaborative Editor</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon-Du_H-qSC.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e1e;
+            color: #cccccc;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+        }
+
+        /* Header - VS Code Style */
+        .header {
+            background: #2d2d30;
+            border-bottom: 1px solid #3e3e42;
+            padding: 0 16px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cccccc;
+        }
+
+        .logo i {
+            font-size: 16px;
+            color: #007acc;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .session-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .session-input {
+            padding: 4px 8px;
+            border: 1px solid #3e3e42;
+            background: #3c3c3c;
+            color: #cccccc;
+            border-radius: 2px;
+            width: 150px;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .session-input:focus {
+            border-color: #007acc;
+            background: #404040;
+        }
+
+        .session-input::placeholder {
+            color: #6a6a6a;
+        }
+
+        .btn {
+            padding: 4px 12px;
+            border: 1px solid #3e3e42;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 400;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+            background: #0e639c;
+            color: #ffffff;
+        }
+
+        .btn:hover {
+            background: #1177bb;
+        }
+
+        .btn-secondary {
+            background: #5a5a5a;
+            color: #ffffff;
+        }
+
+        .btn-secondary:hover {
+            background: #6a6a6a;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #cccccc;
+            border: 1px solid #3e3e42;
+        }
+
+        .btn-outline:hover {
+            background: #3e3e42;
+        }
+
+        .btn-ai {
+            background: #6f42c1;
+            color: white;
+        }
+
+        .btn-ai:hover {
+            background: #7952cc;
+        }
+
+        .btn-console {
+            background: #fd7e14;
+            color: white;
+        }
+
+        .btn-console:hover {
+            background: #e8681a;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .user-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 11px;
+            font-weight: 400;
+        }
+
+        .connection-status.connected {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Main Content with Resizable Panels */
+        .main-content {
+            flex: 1;
+            display: flex;
+            height: calc(100vh - 35px);
+            position: relative;
+        }
+
+        /* Resizable File Explorer Sidebar */
+        .file-explorer {
+            width: 240px;
+            min-width: 200px;
+            max-width: 400px;
+            background: #252526;
+            border-right: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .explorer-header {
+            padding: 8px 12px;
+            background: #2d2d30;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #cccccc;
+            letter-spacing: 0.5px;
+        }
+
+        .explorer-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .explorer-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 2px;
+            transition: all 0.2s ease;
+            font-size: 12px;
+        }
+
+        .action-btn:hover {
+            background: #3e3e42;
+            color: #ffffff;
+        }
+
+        .file-tree {
+            flex: 1;
+            padding: 8px 0;
+            overflow-y: auto;
+        }
+
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 2px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.1s ease;
+            position: relative;
+            height: 22px;
+        }
+
+        .tree-item:hover {
+            background: #2a2d2e;
+        }
+
+        .tree-item.active {
+            background: #37373d;
+            color: #ffffff;
+        }
+
+        .tree-item.folder {
+            font-weight: 400;
+        }
+
+        .tree-item.file {
+            padding-left: 24px;
+        }
+
+        .tree-icon {
+            margin-right: 6px;
+            font-size: 14px;
+            width: 14px;
+            text-align: center;
+        }
+
+        .folder-icon {
+            color: #dcb67a;
+        }
+
+        .file-icon {
+            color: #519aba;
+        }
+
+        .tree-item-actions {
+            margin-left: auto;
+            display: none;
+            gap: 2px;
+        }
+
+        .tree-item:hover .tree-item-actions {
+            display: flex;
+        }
+
+        .item-action {
+            background: none;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .item-action:hover {
+            color: #ffffff;
+            background: #3e3e42;
+        }
+
+        .collaborators-section {
+            border-top: 1px solid #3e3e42;
+            padding: 8px 12px;
+            background: #2d2d30;
+        }
+
+        .collaborators-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #cccccc;
+            letter-spacing: 0.5px;
+        }
+
+        .add-collaborator-btn {
+            background: none;
+            border: none;
+            color: #007acc;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 2px;
+            border-radius: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .add-collaborator-btn:hover {
+            background: rgba(0, 122, 204, 0.2);
+        }
+
+        .collaborators-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .collaborator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border-radius: 2px;
+            background: #3c3c3c;
+            transition: all 0.2s ease;
+        }
+
+        .collaborator:hover {
+            background: #404040;
+        }
+
+        .collaborator-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007acc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 10px;
+            color: white;
+        }
+
+        .collaborator-info {
+            flex: 1;
+        }
+
+        .collaborator-name {
+            font-weight: 400;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .collaborator-status {
+            font-size: 10px;
+            color: #6a6a6a;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-indicator.online {
+            background: #28a745;
+        }
+
+        .status-indicator.offline {
+            background: #6c757d;
+        }
+
+        /* Resize Handle for File Explorer */
+        .resize-handle-left {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 100%;
+            cursor: ew-resize;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .resize-handle-left:hover {
+            background: #007acc;
+        }
+
+        /* Editor Container with Terminal */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+            position: relative;
+        }
+
+        .editor-header {
+            background: #2d2d30;
+            border-bottom: 1px solid #3e3e42;
+            padding: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 35px;
+        }
+
+        .file-tabs {
+            display: flex;
+            height: 35px;
+            overflow-x: auto;
+        }
+
+        .file-tab {
+            padding: 0 12px;
+            background: #2d2d30;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            border-right: 1px solid #3e3e42;
+            min-width: 120px;
+            height: 35px;
+        }
+
+        .file-tab:hover {
+            background: #37373d;
+        }
+
+        .file-tab.active {
+            background: #1e1e1e;
+            color: #ffffff;
+        }
+
+        .tab-close {
+            background: none;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            font-size: 10px;
+            padding: 2px;
+            border-radius: 2px;
+            transition: all 0.2s ease;
+            margin-left: auto;
+        }
+
+        .tab-close:hover {
+            color: #ffffff;
+            background: #3e3e42;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 4px;
+            padding: 0 8px;
+        }
+
+        /* Editor and Terminal Split */
+        .editor-terminal-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .code-editor {
+            flex: 1;
+            position: relative;
+            background: #1e1e1e;
+            min-height: 200px;
+        }
+
+        /* Default Terminal Panel */
+        .terminal-panel {
+            height: 200px;
+            min-height: 100px;
+            max-height: 400px;
+            background: #181818;
+            border-top: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .terminal-header {
+            background: #2d2d30;
+            padding: 8px 12px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 35px;
+        }
+
+        .terminal-title {
+            font-size: 13px;
+            font-weight: 400;
+            color: #cccccc;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .terminal-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .terminal-output {
+            flex: 1;
+            padding: 8px 12px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            background: #1e1e1e;
+        }
+
+        .output-line {
+            margin-bottom: 2px;
+            white-space: pre-wrap;
+            color: #cccccc;
+        }
+
+        .output-line.success {
+            color: #4ec9b0;
+        }
+
+        .output-line.error {
+            color: #f44747;
+        }
+
+        .output-line.info {
+            color: #9cdcfe;
+        }
+
+        .output-line.warning {
+            color: #ffcc02;
+        }
+
+        /* Resize Handle for Terminal */
+        .resize-handle-terminal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            cursor: ns-resize;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .resize-handle-terminal:hover {
+            background: #007acc;
+        }
+
+        /* Resizable Chat Panel */
+        .chat-panel {
+            width: 300px;
+            min-width: 250px;
+            max-width: 500px;
+            background: #252526;
+            border-left: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            background: #2d2d30;
+            padding: 8px 12px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 35px;
+        }
+
+        .chat-title {
+            font-size: 13px;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #cccccc;
+        }
+
+        .call-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .call-btn {
+            background: none;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 2px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .call-btn:hover {
+            color: #ffffff;
+            background: #3e3e42;
+        }
+
+        .call-btn.video:hover {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+
+        .call-btn.audio:hover {
+            background: rgba(0, 123, 255, 0.2);
+            color: #007bff;
+        }
+
+        .call-btn.active {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 8px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            background: #3c3c3c;
+            border-radius: 4px;
+            padding: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .message:hover {
+            background: #404040;
+        }
+
+        .message.own {
+            background: rgba(0, 122, 204, 0.2);
+            margin-left: 16px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .message-username {
+            font-weight: 600;
+            font-size: 12px;
+            color: #007acc;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: #6a6a6a;
+        }
+
+        .message-content {
+            font-size: 13px;
+            line-height: 1.3;
+            color: #cccccc;
+        }
+
+        .chat-input {
+            padding: 8px;
+            border-top: 1px solid #3e3e42;
+            display: flex;
+            gap: 8px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #3e3e42;
+            background: #3c3c3c;
+            color: #cccccc;
+            border-radius: 2px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .message-input:focus {
+            border-color: #007acc;
+            background: #404040;
+        }
+
+        .message-input::placeholder {
+            color: #6a6a6a;
+        }
+
+        /* Resize Handle for Chat Panel */
+        .resize-handle-right {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            cursor: ew-resize;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .resize-handle-right:hover {
+            background: #007acc;
+        }
+
+        /* AI Chat Modal - VS Code Style */
+        .ai-chat-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ai-chat-modal.active {
+            display: flex;
+        }
+
+        .ai-chat-container {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            width: 90vw;
+            max-width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .ai-chat-header {
+            background: #2d2d30;
+            padding: 8px 12px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 35px;
+        }
+
+        .ai-chat-title {
+            font-size: 13px;
+            font-weight: 400;
+            color: #6f42c1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #cccccc;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            color: #ffffff;
+            background: #3e3e42;
+        }
+
+        .ai-chat-messages {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-message {
+            background: #3c3c3c;
+            border-radius: 4px;
+            padding: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .ai-message.user {
+            background: rgba(0, 122, 204, 0.2);
+            margin-left: 16px;
+        }
+
+        .ai-message.assistant {
+            background: rgba(111, 66, 193, 0.2);
+            margin-right: 16px;
+        }
+
+        .ai-message-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .ai-message-role {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .ai-message-role.user {
+            color: #007acc;
+        }
+
+        .ai-message-role.assistant {
+            color: #6f42c1;
+        }
+
+        .ai-message-content {
+            font-size: 13px;
+            line-height: 1.4;
+            color: #cccccc;
+        }
+
+        .ai-message-content pre {
+            background: #1e1e1e;
+            padding: 8px;
+            border-radius: 2px;
+            overflow-x: auto;
+            margin: 6px 0;
+            border: 1px solid #3e3e42;
+        }
+
+        .ai-message-content code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #9cdcfe;
+        }
+
+        .ai-chat-input {
+            padding: 12px;
+            border-top: 1px solid #3e3e42;
+            display: flex;
+            gap: 8px;
+        }
+
+        .ai-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #3e3e42;
+            background: #3c3c3c;
+            color: #cccccc;
+            border-radius: 2px;
+            font-size: 13px;
+            resize: vertical;
+            min-height: 36px;
+            max-height: 100px;
+            outline: none;
+        }
+
+        .ai-input:focus {
+            border-color: #6f42c1;
+            background: #404040;
+        }
+
+        .ai-input::placeholder {
+            color: #6a6a6a;
+        }
+
+        /* Add Collaborator Modal - VS Code Style */
+        .add-collaborator-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-collaborator-modal.active {
+            display: flex;
+        }
+
+        .add-collaborator-container {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            padding: 20px;
+            width: 90vw;
+            max-width: 400px;
+        }
+
+        .modal-header {
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #cccccc;
+            margin-bottom: 4px;
+        }
+
+        .modal-subtitle {
+            font-size: 12px;
+            color: #6a6a6a;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 400;
+            color: #cccccc;
+            margin-bottom: 4px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #3e3e42;
+            background: #3c3c3c;
+            color: #cccccc;
+            border-radius: 2px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: #007acc;
+            background: #404040;
+        }
+
+        .form-input::placeholder {
+            color: #6a6a6a;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 2px;
+        }
+
+        .loading-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #007acc;
+            animation: loading 1.4s infinite ease-in-out;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes loading {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Scrollbar Styling - VS Code Style */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 0;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4f4f4f;
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: #1e1e1e;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .file-explorer {
+                width: 200px;
+                min-width: 180px;
+            }
+            
+            .chat-panel {
+                width: 250px;
+                min-width: 220px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .session-controls {
+                display: none;
+            }
+            
+            .file-explorer {
+                position: absolute;
+                left: -240px;
+                z-index: 100;
+                height: 100%;
+                transition: left 0.3s ease;
+            }
+            
+            .file-explorer.open {
+                left: 0;
+            }
+            
+            .chat-panel {
+                position: absolute;
+                right: -300px;
+                z-index: 100;
+                height: 100%;
+                transition: right 0.3s ease;
+            }
+            
+            .chat-panel.open {
+                right: 0;
+            }
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.2s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Monaco Editor Overrides */
+        .monaco-editor {
+            background: #1e1e1e !important;
+        }
+
+        .monaco-editor .margin {
+            background: #1e1e1e !important;
+        }
+
+        .monaco-editor .monaco-editor-background {
+            background: #1e1e1e !important;
+        }
+
+        /* Resize cursor styles */
+        .resizing {
+            user-select: none;
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/index-CfcCwGA7.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-code"></i>
+                CodeBuddy.ai
+            </div>
+            <div class="header-controls">
+                <div class="session-controls">
+                    <input type="text" id="sessionId" placeholder="Session ID" class="session-input" value="demo-session">
+                    <button id="connectBtn" class="btn">
+                        <i class="fas fa-plug"></i>
+                        Connect
+                    </button>
+                    <button id="disconnectBtn" class="btn btn-secondary" disabled>
+                        <i class="fas fa-times"></i>
+                        Disconnect
+                    </button>
+                </div>
+                <button id="aiChatBtn" class="btn btn-ai">
+                    <i class="fas fa-robot"></i>
+                    AI Assistant
+                </button>
+            </div>
+            <div class="user-controls">
+                <div id="connectionStatus" class="connection-status disconnected">
+                    <div class="status-dot"></div>
+                    <span id="statusText">Disconnected</span>
+                </div>
+                <button id="githubExport" class="btn btn-outline">
+                    <i class="fab fa-github"></i>
+                    Export
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Resizable File Explorer Sidebar -->
+            <aside class="file-explorer" id="fileExplorer">
+                <div class="resize-handle-left" id="leftResizeHandle"></div>
+                
+                <div class="explorer-header">
+                    <div class="explorer-title">
+                        <i class="fas fa-folder"></i>
+                        Explorer
+                    </div>
+                    <div class="explorer-actions">
+                        <button class="action-btn" id="newFileBtn" title="New File">
+                            <i class="fas fa-file-plus"></i>
+                        </button>
+                        <button class="action-btn" id="newFolderBtn" title="New Folder">
+                            <i class="fas fa-folder-plus"></i>
+                        </button>
+                        <button class="action-btn" id="refreshBtn" title="Refresh">
+                            <i class="fas fa-sync"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="file-tree" id="fileTree">
+                    <div class="tree-item folder" data-path="src">
+                        <i class="tree-icon folder-icon fas fa-folder"></i>
+                        <span>src</span>
+                        <div class="tree-item-actions">
+                            <button class="item-action" title="Add File"><i class="fas fa-plus"></i></button>
+                            <button class="item-action" title="Rename"><i class="fas fa-edit"></i></button>
+                            <button class="item-action" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="tree-item file active" data-path="src/Main.java">
+                        <i class="tree-icon file-icon fab fa-java"></i>
+                        <span>Main.java</span>
+                        <div class="tree-item-actions">
+                            <button class="item-action" title="Rename"><i class="fas fa-edit"></i></button>
+                            <button class="item-action" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="tree-item file" data-path="src/Utils.java">
+                        <i class="tree-icon file-icon fab fa-java"></i>
+                        <span>Utils.java</span>
+                        <div class="tree-item-actions">
+                            <button class="item-action" title="Rename"><i class="fas fa-edit"></i></button>
+                            <button class="item-action" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="tree-item file" data-path="README.md">
+                        <i class="tree-icon file-icon fab fa-markdown"></i>
+                        <span>README.md</span>
+                        <div class="tree-item-actions">
+                            <button class="item-action" title="Rename"><i class="fas fa-edit"></i></button>
+                            <button class="item-action" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="collaborators-section">
+                    <div class="collaborators-header">
+                        <div class="collaborators-title">
+                            <i class="fas fa-users"></i>
+                            Collaborators
+                        </div>
+                        <button class="add-collaborator-btn" id="addCollaboratorBtn">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    </div>
+                    <div class="collaborators-list" id="collaboratorsList">
+                        <div class="collaborator">
+                            <div class="collaborator-avatar">A</div>
+                            <div class="collaborator-info">
+                                <div class="collaborator-name">Alice Johnson</div>
+                                <div class="collaborator-status">Active now</div>
+                            </div>
+                            <div class="status-indicator online"></div>
+                        </div>
+                        <div class="collaborator">
+                            <div class="collaborator-avatar">B</div>
+                            <div class="collaborator-info">
+                                <div class="collaborator-name">Bob Smith</div>
+                                <div class="collaborator-status">2 min ago</div>
+                            </div>
+                            <div class="status-indicator online"></div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Editor Container with Terminal -->
+            <div class="editor-container">
+                <div class="editor-header">
+                    <div class="file-tabs" id="fileTabs">
+                        <div class="file-tab active" data-file="Main.java">
+                            <i class="fab fa-java"></i>
+                            <span>Main.java</span>
+                            <button class="tab-close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="editor-actions">
+                        <button class="btn btn-outline" id="saveBtn">
+                            <i class="fas fa-save"></i>
+                            Save
+                        </button>
+                        <button class="btn" id="runCodeBtn">
+                            <i class="fas fa-play"></i>
+                            Run
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="editor-terminal-container">
+                    <div id="editor" class="code-editor"></div>
+                    
+                    <!-- Default Terminal Panel -->
+                    <div class="terminal-panel" id="terminalPanel">
+                        <div class="resize-handle-terminal" id="terminalResizeHandle"></div>
+                        
+                        <div class="terminal-header">
+                            <div class="terminal-title">
+                                <i class="fas fa-terminal"></i>
+                                Terminal
+                            </div>
+                            <div class="terminal-controls">
+                                <button class="btn btn-outline" id="clearTerminal">
+                                    <i class="fas fa-trash"></i>
+                                    Clear
+                                </button>
+                                <button class="close-btn" id="minimizeTerminal">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="terminal-output" id="terminalOutput">
+                            <div class="output-line info">CodeBuddy.ai Terminal v2.0 - Ready to execute your code!</div>
+                            <div class="output-line info">Supported languages: Java, Python, JavaScript, C++</div>
+                            <div class="output-line info">Press Ctrl+R or click "Run" to execute your program.</div>
+                            <div class="output-line">─────────────────────────────────────────────────────────</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resizable Chat Panel -->
+            <div class="chat-panel" id="chatPanel">
+                <div class="resize-handle-right" id="rightResizeHandle"></div>
+                
+                <div class="chat-header">
+                    <div class="chat-title">
+                        <i class="fas fa-comments"></i>
+                        Chat
+                    </div>
+                    <div class="call-controls">
+                        <button class="call-btn audio" id="audioCallBtn" title="Audio Call">
+                            <i class="fas fa-phone"></i>
+                        </button>
+                        <button class="call-btn video" id="videoCallBtn" title="Video Call">
+                            <i class="fas fa-video"></i>
+                        </button>
+                        <button class="call-btn" id="toggleChat" title="Minimize">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message fade-in">
+                        <div class="message-header">
+                            <span class="message-username">Alice Johnson</span>
+                            <span class="message-time">10:30</span>
+                        </div>
+                        <div class="message-content">Ready to start coding? I've set up the project structure.</div>
+                    </div>
+                    <div class="message fade-in">
+                        <div class="message-header">
+                            <span class="message-username">Bob Smith</span>
+                            <span class="message-time">10:32</span>
+                        </div>
+                        <div class="message-content">Great! Let's implement the algorithm we discussed.</div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Type a message..." class="message-input">
+                    <button id="sendBtn" class="btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Chat Modal -->
+    <div class="ai-chat-modal" id="aiChatModal">
+        <div class="ai-chat-container">
+            <div class="ai-chat-header">
+                <div class="ai-chat-title">
+                    <i class="fas fa-robot"></i>
+                    AI Assistant
+                </div>
+                <button class="close-btn" id="closeAiChat">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="ai-chat-messages" id="aiChatMessages">
+                <div class="ai-message assistant fade-in">
+                    <div class="ai-message-header">
+                        <i class="fas fa-robot"></i>
+                        <span class="ai-message-role assistant">AI Assistant</span>
+                    </div>
+                    <div class="ai-message-content">
+                        Hello! I'm your AI coding assistant. I can help you with:
+                        <br><br>
+                        • Code explanations and documentation
+                        <br>• Bug fixes and debugging
+                        <br>• Code optimization and refactoring
+                        <br>• Algorithm suggestions
+                        <br>• Best practices and code reviews
+                        <br><br>
+                        What would you like help with today?
+                    </div>
+                </div>
+            </div>
+            <div class="ai-chat-input">
+                <textarea id="aiInput" class="ai-input" placeholder="Ask me anything about your code..."></textarea>
+                <button id="sendAiMessage" class="btn btn-ai">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Collaborator Modal -->
+    <div class="add-collaborator-modal" id="addCollaboratorModal">
+        <div class="add-collaborator-container">
+            <div class="modal-header">
+                <div class="modal-title">Add Collaborator</div>
+                <div class="modal-subtitle">Invite someone to join your coding session</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">GitHub Username or CodeBuddy.ai ID</label>
+                <input type="text" class="form-input" id="collaboratorId" placeholder="Enter username or ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Permission Level</label>
+                <select class="form-input" id="permissionLevel">
+                    <option value="edit">Can Edit</option>
+                    <option value="view">View Only</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="cancelAddCollaborator">Cancel</button>
+                <button class="btn" id="confirmAddCollaborator">
+                    <i class="fas fa-user-plus"></i>
+                    Add
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
+</body>
+</html>
