@@ -22,6 +22,7 @@ class CodeBuddyApp {
         this.remoteStreams = new Map();
         this.isInCall = false;
         this.consoleVisible = false;
+        this.editorInitialized = false;
         
         console.log('CodeBuddy.ai constructor called');
         this.init();
@@ -43,15 +44,40 @@ class CodeBuddyApp {
 
     async initializeEditor() {
         console.log('Initializing Monaco Editor...');
+        
+        // Prevent multiple initializations
+        if (this.editorInitialized) {
+            console.log('Editor already initialized');
+            return;
+        }
+
         return new Promise((resolve, reject) => {
             // Check if Monaco is already loaded
             if (window.monaco) {
+                console.log('Monaco already available');
                 this.createEditor();
                 resolve();
                 return;
             }
 
-            // Load Monaco Editor
+            // Check if require is available
+            if (typeof require !== 'undefined') {
+                console.log('Using existing require');
+                require.config({ 
+                    paths: { 
+                        vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' 
+                    } 
+                });
+                
+                require(['vs/editor/editor.main'], () => {
+                    console.log('Monaco editor main loaded via existing require');
+                    this.createEditor();
+                    resolve();
+                });
+                return;
+            }
+
+            // Load Monaco Editor loader
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js';
             script.onload = () => {
@@ -73,7 +99,11 @@ class CodeBuddyApp {
                 console.error('Failed to load Monaco Editor:', error);
                 reject(error);
             };
-            document.head.appendChild(script);
+            
+            // Only add script if not already present
+            if (!document.querySelector('script[src*="monaco-editor"]')) {
+                document.head.appendChild(script);
+            }
         });
     }
 
@@ -84,7 +114,18 @@ class CodeBuddyApp {
             return;
         }
 
+        // Check if editor already exists and dispose it
+        if (this.editor) {
+            console.log('Disposing existing editor');
+            this.editor.dispose();
+            this.editor = null;
+        }
+
+        // Clear the editor container
+        editorElement.innerHTML = '';
+
         try {
+            console.log('Creating new Monaco editor instance');
             this.editor = monaco.editor.create(editorElement, {
                 value: '',
                 language: 'java',
@@ -123,9 +164,11 @@ class CodeBuddyApp {
                 }
             });
 
+            this.editorInitialized = true;
             console.log('Monaco Editor created successfully');
         } catch (error) {
             console.error('Error creating Monaco Editor:', error);
+            this.editorInitialized = false;
         }
     }
 
