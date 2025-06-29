@@ -1315,15 +1315,3 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Failed to initialize CodeBuddy.ai:', error);
     }
 });
-
-// Also try to initialize immediately if DOM is already loaded
-if (document.readyState === 'loading') {
-    console.log('DOM is still loading, waiting for DOMContentLoaded...');
-} else {
-    console.log('DOM already loaded, initializing immediately...');
-    try {
-        window.codeBuddyApp = new CodeBuddyApp();
-    } catch (error) {
-        console.error('Failed to initialize CodeBuddy.ai:', error);
-    }
-}
