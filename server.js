@@ -21,13 +21,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('dist'));
 
-// Serve welcome page at root
+// Serve editor directly at root
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'welcome.html'));
-});
-
-// Serve editor at /editor
-app.get('/editor', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -931,8 +926,7 @@ app.get('/health', (req, res) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 CodeBuddy.ai Enhanced server running on port ${PORT}`);
-    console.log(`🏠 Welcome page: http://localhost:${PORT}`);
-    console.log(`📝 Editor: http://localhost:${PORT}/editor`);
+    console.log(`📝 Editor: http://localhost:${PORT}`);
     console.log(`🔧 Health check: http://localhost:${PORT}/health`);
     console.log(`🤖 AI Chat: ${process.env.OPENAI_API_KEY ? 'OpenAI Enabled' : 'Local AI Fallback'}`);
     console.log(`⚡ Code Execution: Java, Python, JavaScript, C++ supported`);
