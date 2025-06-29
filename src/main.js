@@ -1,5 +1,5 @@
-// Enhanced CodeBuddy.ai Web Application with ALL BUTTONS WORKING
-console.log('Loading CodeBuddy.ai...');
+// Enhanced CodeBuddy.ai with Resizable Panels and Default Terminal
+console.log('Loading CodeBuddy.ai Enhanced...');
 
 class CodeBuddyApp {
     constructor() {
@@ -21,22 +21,31 @@ class CodeBuddyApp {
         this.localStream = null;
         this.remoteStreams = new Map();
         this.isInCall = false;
-        this.consoleVisible = false;
         this.editorInitialized = false;
+        
+        // Resizing state
+        this.isResizing = false;
+        this.resizeType = null;
+        this.startX = 0;
+        this.startY = 0;
+        this.startWidth = 0;
+        this.startHeight = 0;
         
         console.log('CodeBuddy.ai constructor called');
         this.init();
     }
 
     async init() {
-        console.log('Initializing CodeBuddy.ai...');
+        console.log('Initializing CodeBuddy.ai Enhanced...');
         try {
             this.initializeFileSystem();
-            this.setupEventListeners(); // Setup listeners FIRST
+            this.setupEventListeners();
             await this.initializeEditor();
             this.loadSampleCode();
             this.setupWebRTC();
-            console.log('CodeBuddy.ai initialized successfully!');
+            this.setupResizableHandles();
+            this.addWelcomeMessage();
+            console.log('CodeBuddy.ai Enhanced initialized successfully!');
         } catch (error) {
             console.error('Error initializing CodeBuddy.ai:', error);
         }
@@ -45,7 +54,6 @@ class CodeBuddyApp {
     setupEventListeners() {
         console.log('Setting up event listeners...');
         
-        // Wait for DOM to be ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 this.attachEventListeners();
@@ -88,25 +96,20 @@ class CodeBuddyApp {
             });
         }
 
-        // Console controls - FIXED
-        this.addEventListenerSafe('consoleBtn', 'click', () => {
-            console.log('Console button clicked - WORKING');
-            this.toggleConsole();
+        // Terminal controls
+        this.addEventListenerSafe('clearTerminal', 'click', () => {
+            console.log('Clear terminal clicked');
+            this.clearTerminal();
         });
         
-        this.addEventListenerSafe('closeConsole', 'click', () => {
-            console.log('Close console clicked');
-            this.hideConsole();
+        this.addEventListenerSafe('minimizeTerminal', 'click', () => {
+            console.log('Minimize terminal clicked');
+            this.minimizeTerminal();
         });
         
-        this.addEventListenerSafe('clearConsole', 'click', () => {
-            console.log('Clear console clicked');
-            this.clearConsole();
-        });
-        
-        // Run Code button - FIXED
+        // Run Code button
         this.addEventListenerSafe('runCodeBtn', 'click', () => {
-            console.log('Run Code button clicked - WORKING');
+            console.log('Run Code button clicked');
             this.runCode();
         });
 
@@ -193,17 +196,114 @@ class CodeBuddyApp {
         }
     }
 
+    // Resizable Panels Setup
+    setupResizableHandles() {
+        console.log('Setting up resizable handles...');
+        
+        // Left sidebar resize handle
+        const leftHandle = document.getElementById('leftResizeHandle');
+        if (leftHandle) {
+            leftHandle.addEventListener('mousedown', (e) => this.startResize(e, 'left'));
+        }
+
+        // Right sidebar resize handle
+        const rightHandle = document.getElementById('rightResizeHandle');
+        if (rightHandle) {
+            rightHandle.addEventListener('mousedown', (e) => this.startResize(e, 'right'));
+        }
+
+        // Terminal resize handle
+        const terminalHandle = document.getElementById('terminalResizeHandle');
+        if (terminalHandle) {
+            terminalHandle.addEventListener('mousedown', (e) => this.startResize(e, 'terminal'));
+        }
+
+        // Global mouse events for resizing
+        document.addEventListener('mousemove', (e) => this.handleResize(e));
+        document.addEventListener('mouseup', () => this.stopResize());
+        
+        console.log('Resizable handles setup complete');
+    }
+
+    startResize(e, type) {
+        console.log('Starting resize:', type);
+        e.preventDefault();
+        
+        this.isResizing = true;
+        this.resizeType = type;
+        this.startX = e.clientX;
+        this.startY = e.clientY;
+        
+        const fileExplorer = document.getElementById('fileExplorer');
+        const chatPanel = document.getElementById('chatPanel');
+        const terminalPanel = document.getElementById('terminalPanel');
+        
+        if (type === 'left' && fileExplorer) {
+            this.startWidth = fileExplorer.offsetWidth;
+        } else if (type === 'right' && chatPanel) {
+            this.startWidth = chatPanel.offsetWidth;
+        } else if (type === 'terminal' && terminalPanel) {
+            this.startHeight = terminalPanel.offsetHeight;
+        }
+        
+        document.body.classList.add('resizing');
+        document.body.style.cursor = type === 'terminal' ? 'ns-resize' : 'ew-resize';
+    }
+
+    handleResize(e) {
+        if (!this.isResizing) return;
+        
+        const fileExplorer = document.getElementById('fileExplorer');
+        const chatPanel = document.getElementById('chatPanel');
+        const terminalPanel = document.getElementById('terminalPanel');
+        
+        if (this.resizeType === 'left' && fileExplorer) {
+            const deltaX = e.clientX - this.startX;
+            const newWidth = Math.max(200, Math.min(400, this.startWidth + deltaX));
+            fileExplorer.style.width = newWidth + 'px';
+            
+        } else if (this.resizeType === 'right' && chatPanel) {
+            const deltaX = this.startX - e.clientX;
+            const newWidth = Math.max(250, Math.min(500, this.startWidth + deltaX));
+            chatPanel.style.width = newWidth + 'px';
+            
+        } else if (this.resizeType === 'terminal' && terminalPanel) {
+            const deltaY = this.startY - e.clientY;
+            const newHeight = Math.max(100, Math.min(400, this.startHeight + deltaY));
+            terminalPanel.style.height = newHeight + 'px';
+        }
+        
+        // Trigger editor resize
+        if (this.editor) {
+            setTimeout(() => this.editor.layout(), 0);
+        }
+    }
+
+    stopResize() {
+        if (!this.isResizing) return;
+        
+        console.log('Stopping resize');
+        this.isResizing = false;
+        this.resizeType = null;
+        
+        document.body.classList.remove('resizing');
+        document.body.style.cursor = '';
+        
+        // Final editor layout
+        if (this.editor) {
+            setTimeout(() => this.editor.layout(), 100);
+        }
+    }
+
     async initializeEditor() {
         console.log('Initializing Monaco Editor...');
         
-        // Prevent multiple initializations
         if (this.editorInitialized) {
             console.log('Editor already initialized');
             return;
         }
 
         return new Promise((resolve, reject) => {
-            // Check if Monaco is already loaded
             if (window.monaco) {
                 console.log('Monaco already available');
                 this.createEditor();
@@ -211,7 +311,6 @@ class CodeBuddyApp {
                 return;
             }
 
-            // Check if require is available
             if (typeof require !== 'undefined') {
                 console.log('Using existing require');
                 require.config({ 
@@ -228,7 +327,6 @@ class CodeBuddyApp {
                 return;
             }
 
-            // Load Monaco Editor loader
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js';
             script.onload = () => {
@@ -251,7 +349,6 @@ class CodeBuddyApp {
                 reject(error);
             };
             
-            // Only add script if not already present
             if (!document.querySelector('script[src*="monaco-editor"]')) {
                 document.head.appendChild(script);
             }
@@ -265,14 +362,12 @@ class CodeBuddyApp {
             return;
         }
 
-        // Check if editor already exists and dispose it
         if (this.editor) {
             console.log('Disposing existing editor');
             this.editor.dispose();
             this.editor = null;
         }
 
-        // Clear the editor container
         editorElement.innerHTML = '';
 
         try {
@@ -300,7 +395,6 @@ class CodeBuddyApp {
                 renderWhitespace: 'selection'
             });
 
-            // Listen for content changes
             this.editor.onDidChangeModelContent((e) => {
                 if (this.isConnected && this.socket) {
                     this.sendCodeChange();
@@ -308,7 +402,6 @@ class CodeBuddyApp {
                 this.saveFileContent();
             });
 
-            // Listen for cursor position changes
             this.editor.onDidChangeCursorPosition((e) => {
                 if (this.isConnected && this.socket) {
                     this.sendCursorPosition(e.position);
@@ -402,6 +495,12 @@ public class HelloWorld {
         
         System.out.println("Sum of array: " + sum);
         System.out.println("Average: " + (sum / numbers.length));
+        
+        // Example: String manipulation
+        String message = "CodeBuddy.ai is awesome!";
+        System.out.println("Message: " + message);
+        System.out.println("Length: " + message.length());
+        System.out.println("Uppercase: " + message.toUpperCase());
     }
 }`;
         
@@ -418,78 +517,67 @@ public class HelloWorld {
         console.log('Sample code loaded');
     }
 
-    // Console Methods - COMPLETELY FIXED
-    toggleConsole() {
-        console.log('toggleConsole called, current state:', this.consoleVisible);
-        
-        this.consoleVisible = !this.consoleVisible;
-        const consolePanel = document.getElementById('consolePanel');
-        
-        if (consolePanel) {
-            console.log('Console panel found, setting visibility to:', this.consoleVisible);
-            
-            if (this.consoleVisible) {
-                consolePanel.classList.add('active');
-                this.addConsoleOutput('Console opened. Ready to execute code.', 'info');
-                console.log('Console opened successfully');
+    // Terminal Methods
+    addWelcomeMessage() {
+        this.addTerminalOutput('🚀 Welcome to CodeBuddy.ai Enhanced Terminal!', 'success');
+        this.addTerminalOutput('💡 Features: Resizable panels, real-time collaboration, AI assistance', 'info');
+        this.addTerminalOutput('⚡ Ready to execute Java, Python, JavaScript, and C++ code', 'info');
+        this.addTerminalOutput('📝 Use Ctrl+R or click "Run" to execute your program', 'info');
+        this.addTerminalOutput('─'.repeat(60), 'info');
+    }
+
+    clearTerminal() {
+        console.log('clearTerminal called');
+        const terminalOutput = document.getElementById('terminalOutput');
+        if (terminalOutput) {
+            terminalOutput.innerHTML = '';
+            this.addTerminalOutput('Terminal cleared.', 'info');
+            console.log('Terminal cleared');
+        }
+    }
+
+    minimizeTerminal() {
+        console.log('minimizeTerminal called');
+        const terminalPanel = document.getElementById('terminalPanel');
+        if (terminalPanel) {
+            const currentHeight = terminalPanel.offsetHeight;
+            if (currentHeight > 50) {
+                terminalPanel.style.height = '35px';
+                this.addTerminalOutput('Terminal minimized. Click to restore.', 'info');
             } else {
-                consolePanel.classList.remove('active');
-                console.log('Console closed successfully');
+                terminalPanel.style.height = '200px';
+                this.addTerminalOutput('Terminal restored.', 'info');
             }
-        } else {
-            console.error('Console panel not found!');
+            
+            // Trigger editor resize
+            if (this.editor) {
+                setTimeout(() => this.editor.layout(), 100);
+            }
         }
     }
 
-    showConsole() {
-        console.log('showConsole called');
-        this.consoleVisible = true;
-        const consolePanel = document.getElementById('consolePanel');
-        if (consolePanel) {
-            consolePanel.classList.add('active');
-            console.log('Console shown');
-        }
-    }
-
-    hideConsole() {
-        console.log('hideConsole called');
-        this.consoleVisible = false;
-        const consolePanel = document.getElementById('consolePanel');
-        if (consolePanel) {
-            consolePanel.classList.remove('active');
-            console.log('Console hidden');
-        }
-    }
-
-    clearConsole() {
-        console.log('clearConsole called');
-        const consoleOutput = document.getElementById('consoleOutput');
-        if (consoleOutput) {
-            consoleOutput.innerHTML = '';
-            this.addConsoleOutput('Console cleared.', 'info');
-            console.log('Console cleared');
-        }
-    }
-
-    addConsoleOutput(text, type = 'info') {
-        const consoleOutput = document.getElementById('consoleOutput');
-        if (consoleOutput) {
+    addTerminalOutput(text, type = 'info') {
+        const terminalOutput = document.getElementById('terminalOutput');
+        if (terminalOutput) {
             const outputLine = document.createElement('div');
             outputLine.className = `output-line ${type}`;
-            outputLine.textContent = text;
-            consoleOutput.appendChild(outputLine);
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-            console.log('Added console output:', text, type);
+            
+            // Add timestamp for better debugging
+            const timestamp = new Date().toLocaleTimeString();
+            outputLine.textContent = `[${timestamp}] ${text}`;
+            
+            terminalOutput.appendChild(outputLine);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            console.log('Added terminal output:', text, type);
         } else {
-            console.error('Console output element not found');
+            console.error('Terminal output element not found');
         }
     }
 
-    // COMPLETELY FIXED RUN CODE METHOD
+    // Enhanced Run Code Method
     async runCode() {
-        console.log('runCode called - COMPLETELY FIXED VERSION');
+        console.log('runCode called - Enhanced version with terminal');
         
-        // Check if editor is ready
         if (!this.editor || !this.editorInitialized) {
             console.error('Editor not ready');
             this.showNotification('Editor not ready. Please wait for initialization.', 'warning');
@@ -500,16 +588,11 @@ public class HelloWorld {
         if (!code.trim()) {
             console.log('No code to execute');
             this.showNotification('No code to execute', 'warning');
+            this.addTerminalOutput('❌ No code to execute', 'error');
             return;
         }
 
         console.log('Code to execute:', code.substring(0, 100) + '...');
-
-        // ALWAYS show console when running code
-        if (!this.consoleVisible) {
-            console.log('Console not visible, opening it');
-            this.showConsole();
-        }
 
         // Get language and filename
         const file = this.fileSystem.get(this.currentFile);
@@ -518,8 +601,8 @@ public class HelloWorld {
 
         console.log('Executing with language:', language, 'filename:', filename);
 
-        this.addConsoleOutput(`▶ Executing ${language} code...`, 'info');
-        this.addConsoleOutput('─'.repeat(50), 'info');
+        this.addTerminalOutput(`▶ Executing ${language} code (${filename})...`, 'info');
+        this.addTerminalOutput('─'.repeat(60), 'info');
 
         try {
             console.log('Making API request to /api/code/execute');
@@ -547,34 +630,43 @@ public class HelloWorld {
 
             if (result.success) {
                 if (result.output && result.output.trim()) {
-                    this.addConsoleOutput('📤 Output:', 'info');
-                    this.addConsoleOutput(result.output, 'success');
+                    this.addTerminalOutput('📤 Program Output:', 'info');
+                    // Split output into lines and add each line
+                    result.output.split('\n').forEach(line => {
+                        if (line.trim()) {
+                            this.addTerminalOutput(line, 'success');
+                        }
+                    });
                 } else {
-                    this.addConsoleOutput('✅ Program executed successfully (no output)', 'success');
+                    this.addTerminalOutput('✅ Program executed successfully (no output)', 'success');
                 }
                 
                 if (result.error && result.error.trim()) {
-                    this.addConsoleOutput('⚠️ Warnings/Errors:', 'warning');
-                    this.addConsoleOutput(result.error, 'warning');
+                    this.addTerminalOutput('⚠️ Warnings/Errors:', 'warning');
+                    result.error.split('\n').forEach(line => {
+                        if (line.trim()) {
+                            this.addTerminalOutput(line, 'warning');
+                        }
+                    });
                 }
                 
-                this.addConsoleOutput(`⏱️ Execution completed in ${result.executionTime}ms`, 'info');
+                this.addTerminalOutput(`⏱️ Execution completed in ${result.executionTime}ms`, 'info');
                 this.showNotification('Code executed successfully!', 'success');
             } else {
-                this.addConsoleOutput('❌ Execution failed:', 'error');
-                this.addConsoleOutput(result.error || 'Unknown error', 'error');
+                this.addTerminalOutput('❌ Execution failed:', 'error');
+                this.addTerminalOutput(result.error || 'Unknown error', 'error');
                 this.showNotification('Code execution failed', 'error');
             }
 
         } catch (error) {
             console.error('Code execution error:', error);
-            this.addConsoleOutput('🔌 Network/Connection Error:', 'error');
-            this.addConsoleOutput(error.message, 'error');
-            this.addConsoleOutput('Please check if the server is running on port 3000', 'error');
+            this.addTerminalOutput('🔌 Network/Connection Error:', 'error');
+            this.addTerminalOutput(error.message, 'error');
+            this.addTerminalOutput('Please check if the server is running on port 3000', 'error');
             this.showNotification(`Execution error: ${error.message}`, 'error');
         }
 
-        this.addConsoleOutput('─'.repeat(50), 'info');
+        this.addTerminalOutput('─'.repeat(60), 'info');
     }
 
     // File Management Methods
@@ -594,6 +686,7 @@ public class HelloWorld {
         this.refreshFileTree();
         this.openFile(fullPath);
         this.showNotification(`Created file: ${fileName}`, 'success');
+        this.addTerminalOutput(`📄 Created new file: ${fileName}`, 'info');
     }
 
     createNewFolder() {
@@ -607,6 +700,7 @@ public class HelloWorld {
 
         this.refreshFileTree();
         this.showNotification(`Created folder: ${folderName}`, 'success');
+        this.addTerminalOutput(`📁 Created new folder: ${folderName}`, 'info');
     }
 
     renameItem(path) {
@@ -623,6 +717,7 @@ public class HelloWorld {
 
         this.refreshFileTree();
         this.showNotification(`Renamed to: ${newName}`, 'success');
+        this.addTerminalOutput(`✏️ Renamed ${currentName} to ${newName}`, 'info');
     }
 
     deleteItem(path) {
@@ -630,13 +725,13 @@ public class HelloWorld {
 
         this.fileSystem.delete(path);
         
-        // Close tab if file is open
         if (this.openTabs.has(path)) {
             this.closeTab(path);
         }
 
         this.refreshFileTree();
         this.showNotification(`Deleted: ${path}`, 'success');
+        this.addTerminalOutput(`🗑️ Deleted: ${path}`, 'warning');
     }
 
     openFile(path) {
@@ -645,13 +740,11 @@ public class HelloWorld {
         const file = this.fileSystem.get(path);
         if (!file || file.type !== 'file') return;
 
-        // Add to open tabs
         if (!this.openTabs.has(path)) {
             this.openTabs.set(path, file);
             this.addFileTab(path);
         }
 
-        // Switch to file
         this.currentFile = path;
         if (this.editor) {
             this.editor.setValue(file.content);
@@ -659,6 +752,7 @@ public class HelloWorld {
         }
         this.updateActiveTab(path);
         this.updateActiveFileInTree(path);
+        this.addTerminalOutput(`📂 Opened file: ${path}`, 'info');
     }
 
     saveFileContent() {
@@ -702,7 +796,6 @@ public class HelloWorld {
         const tab = document.querySelector(`[data-file="${path}"]`);
         if (tab) tab.remove();
 
-        // Switch to another tab if current file is closed
         if (this.currentFile === path) {
             const remainingTabs = Array.from(this.openTabs.keys());
             if (remainingTabs.length > 0) {
@@ -734,12 +827,10 @@ public class HelloWorld {
         
         fileTree.innerHTML = '';
 
-        // Sort files and folders
         const items = Array.from(this.fileSystem.entries()).sort((a, b) => {
             const [pathA, itemA] = a;
             const [pathB, itemB] = b;
             
-            // Folders first
             if (itemA.type === 'folder' && itemB.type === 'file') return -1;
             if (itemA.type === 'file' && itemB.type === 'folder') return 1;
             
@@ -841,21 +932,17 @@ public class HelloWorld {
 
         console.log('Sending AI message:', message);
 
-        // Add user message to chat
         this.addAiMessage('user', message);
         input.value = '';
 
-        // Show loading
         const loadingId = this.addAiMessage('assistant', 'Thinking...', true);
 
         try {
-            // Get current code context
             const currentCode = this.editor ? this.editor.getValue() : '';
             const context = currentCode ? `Current code:\n\`\`\`${this.getCurrentLanguage()}\n${currentCode}\n\`\`\`` : '';
             
             const response = await this.callAI(message, context);
             
-            // Remove loading message and add response
             this.removeAiMessage(loadingId);
             this.addAiMessage('assistant', response);
             
@@ -920,7 +1007,6 @@ public class HelloWorld {
     }
 
     formatAiContent(content) {
-        // Basic markdown-like formatting
         return content
             .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
             .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -950,7 +1036,6 @@ public class HelloWorld {
 
     // WebRTC Video/Audio Call Methods
     setupWebRTC() {
-        // Initialize WebRTC capabilities
         this.checkWebRTCSupport();
     }
 
@@ -979,8 +1064,8 @@ public class HelloWorld {
             this.isInCall = true;
             this.updateCallButtons();
             this.showNotification('Video call started', 'success');
+            this.addTerminalOutput('📹 Video call started', 'info');
             
-            // Notify other participants
             if (this.socket) {
                 this.socket.emit('call-start', {
                     sessionId: this.sessionId,
@@ -992,6 +1077,7 @@ public class HelloWorld {
         } catch (error) {
             console.error('Error starting video call:', error);
             this.showNotification('Failed to start video call', 'error');
+            this.addTerminalOutput('❌ Failed to start video call', 'error');
         }
     }
 
@@ -1010,8 +1096,8 @@ public class HelloWorld {
             this.isInCall = true;
             this.updateCallButtons();
             this.showNotification('Audio call started', 'success');
+            this.addTerminalOutput('🎤 Audio call started', 'info');
             
-            // Notify other participants
             if (this.socket) {
                 this.socket.emit('call-start', {
                     sessionId: this.sessionId,
@@ -1023,6 +1109,7 @@ public class HelloWorld {
         } catch (error) {
             console.error('Error starting audio call:', error);
             this.showNotification('Failed to start audio call', 'error');
+            this.addTerminalOutput('❌ Failed to start audio call', 'error');
         }
     }
 
@@ -1085,6 +1172,7 @@ public class HelloWorld {
             if (response.ok) {
                 const result = await response.json();
                 this.showNotification(result.message, 'success');
+                this.addTerminalOutput(`👥 Added collaborator: ${collaboratorId}`, 'info');
                 this.closeAddCollaboratorModal();
                 this.updateCollaboratorsList();
             } else {
@@ -1097,9 +1185,6 @@ public class HelloWorld {
     }
 
     updateCollaboratorsList() {
-        // This would typically fetch the updated list from the server
-        // For now, we'll simulate adding a new collaborator
-        const collaboratorsList = document.getElementById('collaboratorsList');
         // Implementation would update the collaborators list
     }
 
@@ -1118,14 +1203,12 @@ public class HelloWorld {
         console.log('Connecting to session:', this.sessionId);
 
         try {
-            // Check if Socket.IO is available
             if (typeof io === 'undefined') {
                 console.error('Socket.IO not loaded');
                 this.showNotification('Socket.IO not available', 'error');
                 return;
             }
 
-            // Initialize Socket.IO connection
             this.socket = io();
             
             this.socket.on('connect', () => {
@@ -1142,14 +1225,17 @@ public class HelloWorld {
                 this.isConnected = true;
                 this.updateConnectionStatus(true, 'Connected');
                 this.showNotification(`Connected to session: ${this.sessionId}`, 'success');
+                this.addTerminalOutput(`🔗 Connected to session: ${this.sessionId}`, 'success');
             });
 
             this.socket.on('user-joined', (data) => {
                 this.addChatMessage('System', `${data.username} joined the session`, new Date(), false, 'system');
+                this.addTerminalOutput(`👋 ${data.username} joined the session`, 'info');
             });
 
             this.socket.on('user-left', (data) => {
                 this.addChatMessage('System', `${data.username} left the session`, new Date(), false, 'system');
+                this.addTerminalOutput(`👋 ${data.username} left the session`, 'warning');
             });
 
             this.socket.on('code-change', (data) => {
@@ -1169,6 +1255,7 @@ public class HelloWorld {
                 this.isConnected = false;
                 this.updateConnectionStatus(false, 'Disconnected');
                 this.showNotification('Disconnected from session', 'warning');
+                this.addTerminalOutput('🔌 Disconnected from session', 'warning');
             });
 
         } catch (error) {
@@ -1186,6 +1273,7 @@ public class HelloWorld {
         this.isConnected = false;
         this.updateConnectionStatus(false, 'Disconnected');
         this.showNotification('Disconnected from session', 'info');
+        this.addTerminalOutput('🔌 Manually disconnected from session', 'info');
     }
 
     updateConnectionStatus(connected, statusText) {
@@ -1239,7 +1327,6 @@ public class HelloWorld {
             this.editor.setPosition(currentPosition);
         }
         
-        // Update file system
         if (this.fileSystem.has(data.filename)) {
             const file = this.fileSystem.get(data.filename);
             file.content = data.content;
@@ -1256,11 +1343,9 @@ public class HelloWorld {
         
         console.log('Sending message:', content);
         
-        // Add message to local chat
         this.addChatMessage(this.currentUser.name, content, new Date(), true);
         messageInput.value = '';
         
-        // Send message via socket
         if (this.isConnected && this.socket) {
             this.socket.emit('chat-message', {
                 sessionId: this.sessionId,
@@ -1320,7 +1405,7 @@ public class HelloWorld {
                     break;
                 case '`':
                     e.preventDefault();
-                    this.toggleConsole();
+                    this.minimizeTerminal();
                     break;
             }
         }
@@ -1329,6 +1414,7 @@ public class HelloWorld {
     saveSession() {
         this.saveFileContent();
         this.showNotification('Session saved successfully!', 'success');
+        this.addTerminalOutput('💾 Session saved successfully', 'success');
     }
 
     async exportToGitHub() {
@@ -1342,6 +1428,8 @@ public class HelloWorld {
 
         const accessToken = prompt('Enter your GitHub access token:');
         if (!accessToken) return;
+
+        this.addTerminalOutput(`📤 Exporting to GitHub repository: ${repoName}`, 'info');
 
         try {
             const response = await fetch('/api/github/export', {
@@ -1364,18 +1452,20 @@ public class HelloWorld {
             const result = await response.json();
             if (response.ok) {
                 this.showNotification(`Successfully exported to GitHub: ${result.url}`, 'success');
+                this.addTerminalOutput(`✅ Successfully exported to GitHub: ${result.url}`, 'success');
             } else {
                 this.showNotification(`Export failed: ${result.error}`, 'error');
+                this.addTerminalOutput(`❌ Export failed: ${result.error}`, 'error');
             }
         } catch (error) {
             this.showNotification(`Export failed: ${error.message}`, 'error');
+            this.addTerminalOutput(`❌ Export failed: ${error.message}`, 'error');
         }
     }
 
     showNotification(message, type = 'info') {
         console.log('Notification:', type, message);
         
-        // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.style.cssText = `
@@ -1394,7 +1484,6 @@ public class HelloWorld {
             transition: transform 0.3s ease;
         `;
         
-        // Set background color based on type
         const colors = {
             success: 'linear-gradient(45deg, #4caf50, #45a049)',
             error: 'linear-gradient(45deg, #f44336, #d32f2f)',
@@ -1407,12 +1496,10 @@ public class HelloWorld {
         
         document.body.appendChild(notification);
         
-        // Animate in
         setTimeout(() => {
             notification.style.transform = 'translateX(0)';
         }, 100);
         
-        // Remove after delay
         setTimeout(() => {
             notification.style.transform = 'translateX(100%)';
             setTimeout(() => {
@@ -1424,26 +1511,25 @@ public class HelloWorld {
     }
 }
 
-// Initialize the application when the page loads
+// Initialize the application
 console.log('Setting up DOMContentLoaded listener...');
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing CodeBuddy.ai...');
+    console.log('DOM loaded, initializing CodeBuddy.ai Enhanced...');
     try {
         window.codeBuddyApp = new CodeBuddyApp();
-        console.log('✅ CodeBuddy.ai initialized successfully!');
+        console.log('✅ CodeBuddy.ai Enhanced initialized successfully!');
     } catch (error) {
         console.error('❌ Failed to initialize CodeBuddy.ai:', error);
     }
 });
 
-// Also try to initialize immediately if DOM is already loaded
 if (document.readyState === 'loading') {
     console.log('DOM still loading, waiting for DOMContentLoaded...');
 } else {
     console.log('DOM already loaded, initializing immediately...');
     try {
         window.codeBuddyApp = new CodeBuddyApp();
-        console.log('✅ CodeBuddy.ai initialized successfully!');
+        console.log('✅ CodeBuddy.ai Enhanced initialized successfully!');
     } catch (error) {
         console.error('❌ Failed to initialize CodeBuddy.ai:', error);
     }

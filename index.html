@@ -182,20 +182,24 @@
             background: currentColor;
         }
 
-        /* Main Content */
+        /* Main Content with Resizable Panels */
         .main-content {
             flex: 1;
             display: flex;
             height: calc(100vh - 35px);
+            position: relative;
         }
 
-        /* File Explorer Sidebar - VS Code Style */
+        /* Resizable File Explorer Sidebar */
         .file-explorer {
             width: 240px;
+            min-width: 200px;
+            max-width: 400px;
             background: #252526;
             border-right: 1px solid #3e3e42;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         .explorer-header {
@@ -409,12 +413,29 @@
             background: #6c757d;
         }
 
-        /* Editor Container - VS Code Style */
+        /* Resize Handle for File Explorer */
+        .resize-handle-left {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 100%;
+            cursor: ew-resize;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .resize-handle-left:hover {
+            background: #007acc;
+        }
+
+        /* Editor Container with Terminal */
         .editor-container {
             flex: 1;
             display: flex;
             flex-direction: column;
             background: #1e1e1e;
+            position: relative;
         }
 
         .editor-header {
@@ -480,26 +501,34 @@
             padding: 0 8px;
         }
 
+        /* Editor and Terminal Split */
+        .editor-terminal-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
         .code-editor {
             flex: 1;
             position: relative;
             background: #1e1e1e;
+            min-height: 200px;
         }
 
-        /* Console Panel - VS Code Style */
-        .console-panel {
-            height: 250px;
+        /* Default Terminal Panel */
+        .terminal-panel {
+            height: 200px;
+            min-height: 100px;
+            max-height: 400px;
             background: #181818;
             border-top: 1px solid #3e3e42;
-            display: none;
-            flex-direction: column;
-        }
-
-        .console-panel.active {
             display: flex;
+            flex-direction: column;
+            position: relative;
         }
 
-        .console-header {
+        .terminal-header {
             background: #2d2d30;
             padding: 8px 12px;
             border-bottom: 1px solid #3e3e42;
@@ -509,7 +538,7 @@
             height: 35px;
         }
 
-        .console-title {
+        .terminal-title {
             font-size: 13px;
             font-weight: 400;
             color: #cccccc;
@@ -518,12 +547,12 @@
             gap: 6px;
         }
 
-        .console-controls {
+        .terminal-controls {
             display: flex;
             gap: 4px;
         }
 
-        .console-output {
+        .terminal-output {
             flex: 1;
             padding: 8px 12px;
             overflow-y: auto;
@@ -555,13 +584,32 @@
             color: #ffcc02;
         }
 
-        /* Chat Panel - VS Code Style */
+        /* Resize Handle for Terminal */
+        .resize-handle-terminal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            cursor: ns-resize;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .resize-handle-terminal:hover {
+            background: #007acc;
+        }
+
+        /* Resizable Chat Panel */
         .chat-panel {
             width: 300px;
+            min-width: 250px;
+            max-width: 500px;
             background: #252526;
             border-left: 1px solid #3e3e42;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         .chat-header {
@@ -693,6 +741,22 @@
 
         .message-input::placeholder {
             color: #6a6a6a;
+        }
+
+        /* Resize Handle for Chat Panel */
+        .resize-handle-right {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            cursor: ew-resize;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .resize-handle-right:hover {
+            background: #007acc;
         }
 
         /* AI Chat Modal - VS Code Style */
@@ -994,10 +1058,12 @@
         @media (max-width: 1024px) {
             .file-explorer {
                 width: 200px;
+                min-width: 180px;
             }
             
             .chat-panel {
                 width: 250px;
+                min-width: 220px;
             }
         }
 
@@ -1057,6 +1123,11 @@
         .monaco-editor .monaco-editor-background {
             background: #1e1e1e !important;
         }
+
+        /* Resize cursor styles */
+        .resizing {
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -1083,10 +1154,6 @@
                     <i class="fas fa-robot"></i>
                     AI Assistant
                 </button>
-                <button id="consoleBtn" class="btn btn-console">
-                    <i class="fas fa-terminal"></i>
-                    Console
-                </button>
             </div>
             <div class="user-controls">
                 <div id="connectionStatus" class="connection-status disconnected">
@@ -1102,8 +1169,10 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- File Explorer Sidebar -->
-            <aside class="file-explorer">
+            <!-- Resizable File Explorer Sidebar -->
+            <aside class="file-explorer" id="fileExplorer">
+                <div class="resize-handle-left" id="leftResizeHandle"></div>
+                
                 <div class="explorer-header">
                     <div class="explorer-title">
                         <i class="fas fa-folder"></i>
@@ -1189,7 +1258,7 @@
                 </div>
             </aside>
 
-            <!-- Editor Container -->
+            <!-- Editor Container with Terminal -->
             <div class="editor-container">
                 <div class="editor-header">
                     <div class="file-tabs" id="fileTabs">
@@ -1212,33 +1281,43 @@
                         </button>
                     </div>
                 </div>
-                <div id="editor" class="code-editor"></div>
                 
-                <!-- Console Panel -->
-                <div class="console-panel" id="consolePanel">
-                    <div class="console-header">
-                        <div class="console-title">
-                            <i class="fas fa-terminal"></i>
-                            Terminal
+                <div class="editor-terminal-container">
+                    <div id="editor" class="code-editor"></div>
+                    
+                    <!-- Default Terminal Panel -->
+                    <div class="terminal-panel" id="terminalPanel">
+                        <div class="resize-handle-terminal" id="terminalResizeHandle"></div>
+                        
+                        <div class="terminal-header">
+                            <div class="terminal-title">
+                                <i class="fas fa-terminal"></i>
+                                Terminal
+                            </div>
+                            <div class="terminal-controls">
+                                <button class="btn btn-outline" id="clearTerminal">
+                                    <i class="fas fa-trash"></i>
+                                    Clear
+                                </button>
+                                <button class="close-btn" id="minimizeTerminal">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="console-controls">
-                            <button class="btn btn-outline" id="clearConsole">
-                                <i class="fas fa-trash"></i>
-                                Clear
-                            </button>
-                            <button class="close-btn" id="closeConsole">
-                                <i class="fas fa-times"></i>
-                            </button>
+                        <div class="terminal-output" id="terminalOutput">
+                            <div class="output-line info">CodeBuddy.ai Terminal v2.0 - Ready to execute your code!</div>
+                            <div class="output-line info">Supported languages: Java, Python, JavaScript, C++</div>
+                            <div class="output-line info">Press Ctrl+R or click "Run" to execute your program.</div>
+                            <div class="output-line">─────────────────────────────────────────────────────────</div>
                         </div>
-                    </div>
-                    <div class="console-output" id="consoleOutput">
-                        <div class="output-line info">Terminal ready. Click "Run" to execute your program.</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Chat Panel -->
-            <div class="chat-panel">
+            <!-- Resizable Chat Panel -->
+            <div class="chat-panel" id="chatPanel">
+                <div class="resize-handle-right" id="rightResizeHandle"></div>
+                
                 <div class="chat-header">
                     <div class="chat-title">
                         <i class="fas fa-comments"></i>
