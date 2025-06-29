@@ -1,4 +1,4 @@
-// Enhanced CodeBuddy.ai Web Application with All Advanced Features
+// Enhanced CodeBuddy.ai Web Application with Fixed Console and Code Execution
 console.log('Loading CodeBuddy.ai...');
 
 class CodeBuddyApp {
@@ -405,7 +405,7 @@ public class HelloWorld {
         console.log('Sample code loaded');
     }
 
-    // Console Methods - FIXED
+    // Console Methods - COMPLETELY FIXED
     toggleConsole() {
         console.log('toggleConsole called, current state:', this.consoleVisible);
         
@@ -425,6 +425,16 @@ public class HelloWorld {
             }
         } else {
             console.error('Console panel not found!');
+        }
+    }
+
+    showConsole() {
+        console.log('showConsole called');
+        this.consoleVisible = true;
+        const consolePanel = document.getElementById('consolePanel');
+        if (consolePanel) {
+            consolePanel.classList.add('active');
+            console.log('Console shown');
         }
     }
 
@@ -462,8 +472,9 @@ public class HelloWorld {
         }
     }
 
+    // COMPLETELY FIXED RUN CODE METHOD
     async runCode() {
-        console.log('runCode called - FIXED VERSION');
+        console.log('runCode called - COMPLETELY FIXED VERSION');
         
         // Check if editor is ready
         if (!this.editor || !this.editorInitialized) {
@@ -481,10 +492,10 @@ public class HelloWorld {
 
         console.log('Code to execute:', code.substring(0, 100) + '...');
 
-        // Show console if hidden - FIXED
+        // ALWAYS show console when running code
         if (!this.consoleVisible) {
             console.log('Console not visible, opening it');
-            this.toggleConsole();
+            this.showConsole();
         }
 
         // Get language and filename
@@ -494,7 +505,7 @@ public class HelloWorld {
 
         console.log('Executing with language:', language, 'filename:', filename);
 
-        this.addConsoleOutput(`Executing ${language} code...`, 'info');
+        this.addConsoleOutput(`▶ Executing ${language} code...`, 'info');
         this.addConsoleOutput('─'.repeat(50), 'info');
 
         try {
@@ -522,22 +533,31 @@ public class HelloWorld {
             console.log('API response result:', result);
 
             if (result.success) {
-                if (result.output) {
+                if (result.output && result.output.trim()) {
+                    this.addConsoleOutput('📤 Output:', 'info');
                     this.addConsoleOutput(result.output, 'success');
+                } else {
+                    this.addConsoleOutput('✅ Program executed successfully (no output)', 'success');
                 }
-                if (result.error) {
+                
+                if (result.error && result.error.trim()) {
+                    this.addConsoleOutput('⚠️ Warnings/Errors:', 'warning');
                     this.addConsoleOutput(result.error, 'warning');
                 }
-                this.addConsoleOutput(`Execution completed in ${result.executionTime}ms`, 'info');
+                
+                this.addConsoleOutput(`⏱️ Execution completed in ${result.executionTime}ms`, 'info');
                 this.showNotification('Code executed successfully!', 'success');
             } else {
-                this.addConsoleOutput(`Error: ${result.error}`, 'error');
+                this.addConsoleOutput('❌ Execution failed:', 'error');
+                this.addConsoleOutput(result.error || 'Unknown error', 'error');
                 this.showNotification('Code execution failed', 'error');
             }
 
         } catch (error) {
             console.error('Code execution error:', error);
-            this.addConsoleOutput(`Network error: ${error.message}`, 'error');
+            this.addConsoleOutput('🔌 Network/Connection Error:', 'error');
+            this.addConsoleOutput(error.message, 'error');
+            this.addConsoleOutput('Please check if the server is running on port 3000', 'error');
             this.showNotification(`Execution error: ${error.message}`, 'error');
         }
 
