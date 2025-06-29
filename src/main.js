@@ -205,16 +205,25 @@ class CodeBuddyApp {
             });
         }
 
-        // Console controls
+        // Console controls - FIXED
         this.addEventListenerSafe('consoleBtn', 'click', () => {
-            console.log('Console button clicked');
+            console.log('Console button clicked - FIXED');
             this.toggleConsole();
         });
         
-        this.addEventListenerSafe('closeConsole', 'click', () => this.hideConsole());
-        this.addEventListenerSafe('clearConsole', 'click', () => this.clearConsole());
+        this.addEventListenerSafe('closeConsole', 'click', () => {
+            console.log('Close console clicked');
+            this.hideConsole();
+        });
+        
+        this.addEventListenerSafe('clearConsole', 'click', () => {
+            console.log('Clear console clicked');
+            this.clearConsole();
+        });
+        
+        // Run Code button - FIXED
         this.addEventListenerSafe('runCodeBtn', 'click', () => {
-            console.log('Run Code button clicked');
+            console.log('Run Code button clicked - FIXED');
             this.runCode();
         });
 
@@ -396,36 +405,46 @@ public class HelloWorld {
         console.log('Sample code loaded');
     }
 
-    // Console Methods
+    // Console Methods - FIXED
     toggleConsole() {
+        console.log('toggleConsole called, current state:', this.consoleVisible);
+        
         this.consoleVisible = !this.consoleVisible;
         const consolePanel = document.getElementById('consolePanel');
         
         if (consolePanel) {
+            console.log('Console panel found, setting visibility to:', this.consoleVisible);
+            
             if (this.consoleVisible) {
                 consolePanel.classList.add('active');
                 this.addConsoleOutput('Console opened. Ready to execute code.', 'info');
+                console.log('Console opened successfully');
             } else {
                 consolePanel.classList.remove('active');
+                console.log('Console closed successfully');
             }
+        } else {
+            console.error('Console panel not found!');
         }
-        
-        console.log('Console toggled:', this.consoleVisible);
     }
 
     hideConsole() {
+        console.log('hideConsole called');
         this.consoleVisible = false;
         const consolePanel = document.getElementById('consolePanel');
         if (consolePanel) {
             consolePanel.classList.remove('active');
+            console.log('Console hidden');
         }
     }
 
     clearConsole() {
+        console.log('clearConsole called');
         const consoleOutput = document.getElementById('consoleOutput');
         if (consoleOutput) {
             consoleOutput.innerHTML = '';
             this.addConsoleOutput('Console cleared.', 'info');
+            console.log('Console cleared');
         }
     }
 
@@ -437,25 +456,34 @@ public class HelloWorld {
             outputLine.textContent = text;
             consoleOutput.appendChild(outputLine);
             consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            console.log('Added console output:', text, type);
+        } else {
+            console.error('Console output element not found');
         }
     }
 
     async runCode() {
-        console.log('Running code...');
+        console.log('runCode called - FIXED VERSION');
         
-        if (!this.editor) {
-            this.showNotification('Editor not ready', 'warning');
+        // Check if editor is ready
+        if (!this.editor || !this.editorInitialized) {
+            console.error('Editor not ready');
+            this.showNotification('Editor not ready. Please wait for initialization.', 'warning');
             return;
         }
 
         const code = this.editor.getValue();
         if (!code.trim()) {
+            console.log('No code to execute');
             this.showNotification('No code to execute', 'warning');
             return;
         }
 
-        // Show console if hidden
+        console.log('Code to execute:', code.substring(0, 100) + '...');
+
+        // Show console if hidden - FIXED
         if (!this.consoleVisible) {
+            console.log('Console not visible, opening it');
             this.toggleConsole();
         }
 
@@ -464,10 +492,14 @@ public class HelloWorld {
         const language = file ? file.language : 'java';
         const filename = this.currentFile ? this.currentFile.split('/').pop().split('.')[0] : 'Main';
 
+        console.log('Executing with language:', language, 'filename:', filename);
+
         this.addConsoleOutput(`Executing ${language} code...`, 'info');
         this.addConsoleOutput('─'.repeat(50), 'info');
 
         try {
+            console.log('Making API request to /api/code/execute');
+            
             const response = await fetch('/api/code/execute', {
                 method: 'POST',
                 headers: {
@@ -480,7 +512,14 @@ public class HelloWorld {
                 })
             });
 
+            console.log('API response status:', response.status);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const result = await response.json();
+            console.log('API response result:', result);
 
             if (result.success) {
                 if (result.output) {
@@ -490,12 +529,16 @@ public class HelloWorld {
                     this.addConsoleOutput(result.error, 'warning');
                 }
                 this.addConsoleOutput(`Execution completed in ${result.executionTime}ms`, 'info');
+                this.showNotification('Code executed successfully!', 'success');
             } else {
                 this.addConsoleOutput(`Error: ${result.error}`, 'error');
+                this.showNotification('Code execution failed', 'error');
             }
 
         } catch (error) {
+            console.error('Code execution error:', error);
             this.addConsoleOutput(`Network error: ${error.message}`, 'error');
+            this.showNotification(`Execution error: ${error.message}`, 'error');
         }
 
         this.addConsoleOutput('─'.repeat(50), 'info');
