@@ -468,6 +468,8 @@ function generateBasicResponse(message) {
 app.post('/api/code/execute', async (req, res) => {
     const { code, language, filename } = req.body;
     
+    console.log('Executing code:', { language, filename, codeLength: code.length });
+    
     try {
         const result = await executeCode(code, language, filename);
         res.json({
@@ -477,6 +479,7 @@ app.post('/api/code/execute', async (req, res) => {
             executionTime: result.executionTime
         });
     } catch (error) {
+        console.error('Code execution error:', error);
         res.json({
             success: false,
             error: error.message,
@@ -496,14 +499,14 @@ async function executeCode(code, language, filename) {
         // Create temp directory if it doesn't exist
         const tempDir = path.join(__dirname, 'temp');
         if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir);
+            fs.mkdirSync(tempDir, { recursive: true });
         }
         
         switch (language.toLowerCase()) {
             case 'java':
                 tempFile = path.join(tempDir, `${filename || 'Main'}.java`);
                 fs.writeFileSync(tempFile, code);
-                command = `cd ${tempDir} && javac ${filename || 'Main'}.java && java ${filename || 'Main'}`;
+                command = `cd "${tempDir}" && javac "${filename || 'Main'}.java" && java ${filename || 'Main'}`;
                 break;
                 
             case 'python':
@@ -535,8 +538,12 @@ async function executeCode(code, language, filename) {
                 return;
         }
         
+        console.log('Executing command:', command);
+        
         exec(command, { timeout: 10000 }, (error, stdout, stderr) => {
             const executionTime = Date.now() - startTime;
+            
+            console.log('Execution result:', { error: !!error, stdout: stdout.length, stderr: stderr.length, executionTime });
             
             // Clean up temp files
             try {
